@@ -1,20 +1,25 @@
 {
-    "input_dir": "/home/hkai/example/videos/building pic/",
-    "output_dir": "./output/area4_global_local/",
+    "input_dir": "/circ330/circ_video/Version1",
+    "output_dir": "/circ330/Homo/Homo/outputtest/",
     "output": true,
 
     "device": "cuda",
     "pred_mode": "fp32",
-    "model_path": "/home/hkai/example/IR_Convert_v20_libtorch/model/SemLA_jit_cuda.zip",
-    
-    "output_width": 320,
-    "output_height": 240,
+    "model_path": "/circ330/IR_Convert_v21_libtorch/model/SemLA_jit_cuda.zip",
 
-    "pred_width": 320,
-    "pred_height": 240,
+    "cut_x": 0,
+    "cut_y": 0,
+    "cut_h": 1000,
+    "cut_w": 1000,
+
+    "output_width": 480,
+    "output_height": 360,
+
+    "pred_width": 480,
+    "pred_height": 360,
 
     "fusion_shadow": false,
-    "fusion_edge_border": 1,
+    "fusion_edge_border": 3,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,

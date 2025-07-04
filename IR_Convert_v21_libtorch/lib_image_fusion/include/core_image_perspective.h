@@ -36,6 +36,7 @@ namespace core
     struct Param
     {
       cv::Mat H;
+      cv::Mat wrap(cv::Mat &in, cv::Mat &H, int width, int height);
 
       bool check = true;
       float distance = 10;
@@ -61,6 +62,7 @@ namespace core
     ImagePerspective(Param param);
 
     cv::Mat wrap(cv::Mat &in, int width, int height);
+    // cv::Mat wrap(cv::Mat &in, cv::Mat &H, int width, int height);
 
     bool find_perspective_matrix(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst);
     bool find_perspective_matrix_msac(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst);

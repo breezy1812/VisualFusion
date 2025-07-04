@@ -30,6 +30,12 @@ namespace core
     cv::warpPerspective(in, out, param_.H, cv::Size(width, height));
     return out;
   }
+  // cv::Mat ImagePerspective::wrap(cv::Mat &in, cv::Mat &H, int width, int height)
+  // {
+  //   cv::Mat out;
+  //   cv::warpPerspective(in, out, H, cv::Size(width, height));
+  //   return out;
+  // }
 
   bool ImagePerspective::find_perspective_matrix(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst)
   {
