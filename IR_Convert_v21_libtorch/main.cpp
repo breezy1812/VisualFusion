@@ -93,14 +93,14 @@ inline void init_config(nlohmann::json &config)
 
   config.emplace("cut_x", 0);
   config.emplace("cut_y", 0);
-  config.emplace("cut_h", 1000);
-  config.emplace("cut_w", 1000);
+  config.emplace("cut_h", -1); // -1 means no cut, use full image height
+  config.emplace("cut_w", -1); // -1 means no cut, use full image width
 
-  config.emplace("output_width", 320);
-  config.emplace("output_height", 240);
+  config.emplace("output_width", 480);
+  config.emplace("output_height", 360);
 
-  config.emplace("pred_width", 320);//480,360
-  config.emplace("pred_height", 240);// 640 480
+  config.emplace("pred_width", 480);//480,360
+  config.emplace("pred_height", 360);// 640 480
 
   config.emplace("fusion_shadow", false);
   config.emplace("fusion_edge_border", 1);
@@ -238,6 +238,7 @@ int main(int argc, char **argv)
   int cut_w = config["cut_w"];
   int cut_h = config["cut_h"];
 
+
   // get model info
   string device = config["device"];
   string pred_mode = config["pred_mode"];
@@ -336,7 +337,7 @@ int main(int argc, char **argv)
       
       if (isOut)
       {
-        writer.open(save_path + "v3.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+        writer.open(save_path + "480360.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
       }
     }
     else
@@ -419,14 +420,18 @@ int main(int argc, char **argv)
         ir_cap.read(ir);
         eo_cap.read(eo);
         // 新增：eo每一幀都經過裁切（預設裁切全圖）
-        eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
+        if (cut_w != -1 && cut_h != -1) {
+          eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
+        }
       }
       else
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
         // 新增：eo先經過裁切（預設裁切全圖）
-        eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
+        if (cut_w != -1 && cut_h != -1) {
+          eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
+        }
       }
 
       // 退出迴圈條件
@@ -572,7 +577,7 @@ int main(int argc, char **argv)
         // 高品質插值版本 (效果不佳，已停用)：
         // cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(0));
         timer_perspective.stop();
-        cout << "  - Applied homography transformation to edge image (improved RANSAC)" << endl;
+        // cout << "  - Applied homography transformation to edge image (improved RANSAC)" << endl;
       }
       else
       {

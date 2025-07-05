@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DUSE_C10D_GLOO -DUSE_C10D_NCCL -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -D_GLIBCXX_USE_CXX11_ABI=1
 
-CXX_INCLUDES = -I/circ330/IR_Convert_v21_libtorch/nlohmann -I/circ330/IR_Convert_v21_libtorch/utils/include -I/circ330/IR_Convert_v21_libtorch/lib_image_fusion/include -isystem /usr/include/opencv4 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include -isystem /usr/local/cuda/include
+CXX_INCLUDES = -I/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/nlohmann -I/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/utils/include -I/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/include -isystem /usr/include/opencv4 -isystem /opt/libtorch/include -isystem /opt/libtorch/include/torch/csrc/api/include -isystem /usr/local/cuda/include
 
 CXX_FLAGS = -std=gnu++17 -D_GLIBCXX_USE_CXX11_ABI=1
 

@@ -9,8 +9,8 @@
 
     "cut_x": 0,
     "cut_y": 0,
-    "cut_h": 1000,
-    "cut_w": 1000,
+    "cut_h": -1,
+    "cut_w": -1,
 
     "output_width": 480,
     "output_height": 360,

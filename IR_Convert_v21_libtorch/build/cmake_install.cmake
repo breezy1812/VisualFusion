@@ -1,4 +1,4 @@
-# Install script for directory: /circ330/IR_Convert_v21_libtorch
+# Install script for directory: /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/circ330/IR_Convert_v21_libtorch/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

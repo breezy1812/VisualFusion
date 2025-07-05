@@ -7,7 +7,7 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/circ330/IR_Convert_v21_libtorch/CMakeLists.txt"
+  "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/CMakeLists.txt"
   "CMakeFiles/3.26.4/CMakeCCompiler.cmake"
   "CMakeFiles/3.26.4/CMakeCUDACompiler.cmake"
   "CMakeFiles/3.26.4/CMakeCXXCompiler.cmake"
