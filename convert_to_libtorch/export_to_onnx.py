@@ -7,7 +7,20 @@ fpMode = torch.float32
 
 
 matcher = SemLA(device=device, fp=fpMode)
-matcher.load_state_dict(torch.load(f"./reg.ckpt"), strict=False)
+m1", "feat_sa_vi", "feat_sa_ir", "sa_ir"],
+    dynamic_axes={
+        "vi_img": [2, 3],
+        "ir_img": [2, 3],
+        "mkpt0": [0],
+        "mkpt1": [0],
+        "feat_sa_vi": [2, 3],
+        "feat_sa_ir": [2, 3],
+        "sa_ir": [2, 3],
+    },
+)
+
+# if want to convert onnx model to tensorrt, please run export_to_onnx_tensorrt.py
+atcher.load_state_dict(torch.load(f"./reg.ckpt"), strict=False)
 
 matcher = matcher.eval().to(device, dtype=fpMode)
 
