@@ -1,0 +1,3 @@
+/circ330/forgithub/VisualFusion_libtorch/Onnx/build/CMakeFiles/out.dir
+/circ330/forgithub/VisualFusion_libtorch/Onnx/build/CMakeFiles/edit_cache.dir
+/circ330/forgithub/VisualFusion_libtorch/Onnx/build/CMakeFiles/rebuild_cache.dir
