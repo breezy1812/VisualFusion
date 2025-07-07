@@ -1,3 +1,23 @@
+// 直接將一通道餵給三通道
+// 
+// 版本更新紀錄：
+// 2025-07-03 v2: 智能RANSAC策略 (當前版本)
+//             - 實作智能RANSAC：自動嘗試5組不同參數 (從嚴格到寬鬆)
+//             - 使用品質分數選擇最佳homography：inlier比例 × confidence × 矩陣穩定性
+//             - 輸出詳細的RANSAC嘗試結果和最佳參數資訊
+//             - 回復原始插值方法 (高品質插值效果不佳)
+//             原始程式碼已保留為註解，可隨時復原
+// 2025-07-03 v1: 改進RANSAC方法 (已升級)
+//             - 多次嘗試不同的RANSAC參數組合，選擇最佳結果
+//             - 增加homography矩陣品質檢查 (determinant範圍檢查)
+// 
+// 智能RANSAC參數策略：
+// - {3.0, 0.99}: 最嚴格，適合高品質特徵點
+// - {5.0, 0.99}: 嚴格，平衡品質與數量
+// - {8.0, 0.95}: 中等，標準設定  
+// - {10.0, 0.9}: 寬鬆，容許更多noise
+// - {15.0, 0.85}: 最寬鬆，最後嘗試
+
 #include <ratio>
 #include <chrono>
 #include <string>
@@ -20,12 +40,9 @@
 #include "lib_image_fusion/include/core_image_perspective.h"
 #include "lib_image_fusion/src/core_image_perspective.cpp"
 
-// =============== 選擇版本：註解掉不需要的版本 ===============
-// 版本 1: ONNX 版本
-// #include "lib_image_fusion/include/core_image_align_onnx.h"
-// #include "lib_image_fusion/src/core_image_align_onnx.cpp"
+// #include "lib_image_fusion/include/core_image_align_onnx_polar.h"
+// #include "lib_image_fusion/src/core_image_align_onnx_polar.cpp"
 
-// 版本 2: LibTorch 版本 (註解掉以使用 ONNX)
 #include "lib_image_fusion/include/core_image_align_libtorch.h"
 #include "lib_image_fusion/src/core_image_align_libtorch.cpp"
 
@@ -74,10 +91,10 @@ inline void init_config(nlohmann::json &config)
   config.emplace("pred_mode", "fp32");
   config.emplace("model_path", "./model/SemLA_jit_cpu.zip");
 
-  config.emplace("Vcut_x", 0);
-  config.emplace("Vcut_y", 0);
-  config.emplace("Vcut_h", -1); // -1 means no cut, use full image height
-  config.emplace("Vcut_w", -1); // -1 means no cut, use full image width
+  config.emplace("cut_x", 0);
+  config.emplace("cut_y", 0);
+  config.emplace("cut_h", -1); // -1 means no cut, use full image height
+  config.emplace("cut_w", -1); // -1 means no cut, use full image width
 
   config.emplace("output_width", 480);
   config.emplace("output_height", 360);
@@ -108,16 +125,8 @@ cv::Mat cropImage(const cv::Mat& sourcePic, int x, int y, int w, int h) {
     // 邊界檢查，確保不超出原圖
     int crop_x = std::max(0, x);
     int crop_y = std::max(0, y);
-    int crop_w = w;
-    int crop_h = h;
-    if (w < 0) {
-        crop_w = sourcePic.cols - crop_x;
-    }
-    if (h < 0) {
-        crop_h = sourcePic.rows - crop_y;
-    }
-    crop_w = std::min(crop_w, sourcePic.cols - crop_x);
-    crop_h = std::min(crop_h, sourcePic.rows - crop_y);
+    int crop_w = std::min(w, sourcePic.cols - crop_x);
+    int crop_h = std::min(h, sourcePic.rows - crop_y);
     cv::Rect roi(crop_x, crop_y, crop_w, crop_h);
     return sourcePic(roi).clone();
 }
@@ -175,11 +184,6 @@ inline void skip_frames(const string &path, cv::VideoCapture &cap, nlohmann::jso
 
 int main(int argc, char **argv)
 {
-  // 新增: 追蹤特徵點座標範圍
-  int min_x = INT_MAX, max_x = INT_MIN;
-  int min_y = INT_MAX, max_y = INT_MIN;
-  string current_video = "";
-
   // ----- Config -----
   json config;
   string config_path = "./config/config.json";
@@ -228,18 +232,11 @@ int main(int argc, char **argv)
   int out_w = config["output_width"], out_h = config["output_height"];
   int pred_w = config["pred_width"], pred_h = config["pred_height"];
 
-  // get Vcut parameter
-  bool isVideoCut = config["VideoCut"];
-  int Vcut_x = config["Vcut_x"];//3840*2160
-  int Vcut_y = config["Vcut_y"];
-  int Vcut_w = config["Vcut_w"];
-  int Vcut_h = config["Vcut_h"];
-
-  bool isPictureCut = config["PictureCut"];
-  int Pcut_x = config["Pcut_x"];//1920*1080
-  int Pcut_y = config["Pcut_y"];
-  int Pcut_w = config["Pcut_w"];
-  int Pcut_h = config["Pcut_h"];
+  // get cut parameter
+  int cut_x = config["cut_x"];
+  int cut_y = config["cut_y"];
+  int cut_w = config["cut_w"];
+  int cut_h = config["cut_h"];
 
 
   // get model info
@@ -287,6 +284,9 @@ int main(int argc, char **argv)
     cout << "\tAlign Angle Sort: " << align_angle_sort << endl;
     cout << "\tAlign Distance Last: " << align_distance_last << endl;
     cout << "\tAlign Distance Line: " << align_distance_line << endl;
+    // REMOVED: 移除新增參數的顯示
+    // cout << "\tCompute Per Frame: " << config["compute_per_frame"] << endl;
+    // cout << "\tTime Delay Entries: " << config["time_delay"].size() << endl;
   }
 
   // ----- Start -----
@@ -324,6 +324,9 @@ int main(int argc, char **argv)
       eo_w = (int)eo_cap.get(3), eo_h = (int)eo_cap.get(4);
       ir_w = (int)ir_cap.get(3), ir_h = (int)ir_cap.get(4);
       
+      // MODIFIED: 修正frame rate計算，與Python版本一致
+      // 原本: frame_rate = (int)ir_cap.get(5) / (int)eo_cap.get(5);
+      // 現在: frame_rate = (int)ir_cap.get(cv::CAP_PROP_FPS) / (int)eo_cap.get(cv::CAP_PROP_FPS);
       int fps_ir = (int)ir_cap.get(cv::CAP_PROP_FPS);
       int fps_eo = (int)eo_cap.get(cv::CAP_PROP_FPS);
       frame_rate = fps_ir / fps_eo;
@@ -334,7 +337,7 @@ int main(int argc, char **argv)
       
       if (isOut)
       {
-        writer.open(save_path + "cutCam1.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+        writer.open(save_path + "480360.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
       }
     }
     else
@@ -345,9 +348,15 @@ int main(int argc, char **argv)
       ir_w = ir.cols, ir_h = ir.rows;
     }
 
+    // REMOVED: 秮除 EO 圖像的寬度計算，因為不再需要按比例計算後裁剪
+    // int eo_new_w = eo_w * ((float)out_h / eo_h);
+
     // Create instance
     auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
 
+    // MODIFIED: 移除裁剪參數，直接 resize 到目標尺寸
+    // 原本: .set_eo(eo_new_w, out_h, out_w, out_h) - 有裁剪參數
+    // 現在: .set_eo(out_w, out_h) - 直接 resize，無裁剪
     auto image_resizer = core::ImageResizer::create_instance(
         core::ImageResizer::Param()
             .set_eo(out_w, out_h)
@@ -365,17 +374,9 @@ int main(int argc, char **argv)
         core::ImagePerspective::Param()
             .set_check(perspective_check, perspective_accuracy, perspective_distance));
 
-    // =============== 選擇版本：註解掉不需要的版本 ===============
-    // 版本 1: ONNX 版本
-    /*
-    auto image_align = core::ImageAlignONNX::create_instance(
-        core::ImageAlignONNX::Param()
-            .set_size(pred_w, pred_h, out_w, out_h)
-            .set_model(device, model_path)
-            .set_bias(0, 0));
-    */
-
-    // 版本 2: LibTorch 版本
+    // MODIFIED: 移除 bias 設定，因為不再有裁剪偏移
+    // 原本: .set_bias(image_resizer->get_eo_clip_x(), image_resizer->get_eo_clip_y())
+    // 現在: .set_bias(0, 0) - 無偏移
     auto image_align = core::ImageAlign::create_instance(
         core::ImageAlign::Param()
             .set_size(pred_w, pred_h, out_w, out_h)
@@ -388,6 +389,7 @@ int main(int argc, char **argv)
     auto timer_base = core::Timer("All");
     auto timer_resize = core::Timer("Resize");
     auto timer_gray = core::Timer("Gray");
+    // REMOVED: auto timer_clip = core::Timer("Clip"); - 移除裁剪計時器
     auto timer_equalization = core::Timer("Equalization");
     auto timer_perspective = core::Timer("Perspective");
     auto timer_find_homo = core::Timer("Homo");
@@ -398,6 +400,7 @@ int main(int argc, char **argv)
     // 讀取影片
     Mat eo, ir;
     
+    // ADDED: Python風格的變數設定
     int cnt = 0;  // 幀數計數器
     cv::Mat M;    // Homography矩陣
     Mat temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);  // 儲存特徵點配對圖像
@@ -407,15 +410,18 @@ int main(int argc, char **argv)
     while (1)
     {
 
+      // MODIFIED: 修改影片讀取順序和frame rate處理，與Python版本一致
+      // 原本: eo_cap.read(eo); for (int i = 0; i < frame_rate; i++) ir_cap.read(ir);
+      // 現在: ir_cap.read(ir); eo_cap.read(eo); (Python: ret_ir, frame_ir = cap_ir.read(); ret_eo, frame_eo = cap_eo.read())
+
 
       if (isVideo)
       {
         ir_cap.read(ir);
         eo_cap.read(eo);
         // 新增：eo每一幀都經過裁切（預設裁切全圖）
-        if (isVideoCut) {
-          eo = cropImage(eo, Vcut_x, Vcut_y, Vcut_w, Vcut_h);
-          //3840*2160
+        if (cut_w != -1 && cut_h != -1) {
+          eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
         }
       }
       else
@@ -423,8 +429,8 @@ int main(int argc, char **argv)
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
         // 新增：eo先經過裁切（預設裁切全圖）
-        if (isPictureCut) {
-          eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
+        if (cut_w != -1 && cut_h != -1) {
+          eo = cropImage(eo, cut_x, cut_y, cut_w, cut_h);
         }
       }
 
@@ -435,6 +441,28 @@ int main(int argc, char **argv)
       // 幀數計數
       timer_base.start();
 
+      // MODIFIED: 按照Python程式碼重新組織處理邏輯
+      // 原始處理邏輯註解掉
+      /*
+      // 原始程式碼：
+      Mat out;
+      Mat eo_edge;
+      Mat eo_resize, ir_resize, eo_wrap;
+      Mat eo_gray, ir_gray;
+
+      {
+        timer_resize.start();
+        image_resizer->resize(eo, ir, eo_resize, ir_resize);
+        timer_resize.stop();
+      }
+
+      {
+        timer_gray.start();
+        eo_gray = image_gray->gray(eo_resize);
+        ir_gray = image_gray->gray(ir_resize);
+        timer_gray.stop();
+      }
+      */
       
       // 新程式碼：按照Python版本
       Mat img_ir, img_eo, gray_ir, gray_eo;
@@ -446,6 +474,9 @@ int main(int argc, char **argv)
         cv::resize(ir, img_ir, cv::Size(out_w, out_h));
         cv::resize(eo, img_eo, cv::Size(out_w, out_h));
         
+        // 高品質插值版本 (效果不佳，已停用)：
+        // cv::resize(ir, img_ir, cv::Size(out_w, out_h), 0, 0, cv::INTER_CUBIC);
+        // cv::resize(eo, img_eo, cv::Size(out_w, out_h), 0, 0, cv::INTER_CUBIC);
         timer_resize.stop();
       }
       
@@ -457,21 +488,24 @@ int main(int argc, char **argv)
         timer_gray.stop();
       }
 
-      // 每50幀計算一次特徵點
+      // ====== 原本每一幀都計算特徵點與Homography的區塊註解起來 ======
+      /*
+      vector<cv::Point2i> eo_pts, ir_pts;
+      {
+        timer_align.start();
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M);
+        cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
+        timer_align.stop();
+      }
+      // Homography計算區塊...
+      */
+      // ====== 改為每compute_per_frame幀才計算一次 ======
       if (cnt % compute_per_frame == 0) {
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M);
         cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
         timer_align.stop();
-
-        // 更新特徵點座標範圍
-        for (const auto& pt : eo_pts) {
-          min_x = std::min(min_x, pt.x);
-          max_x = std::max(max_x, pt.x);
-          min_y = std::min(min_y, pt.y);
-          max_y = std::max(max_y, pt.y);
-        }
 
         timer_find_homo.start();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
@@ -505,18 +539,8 @@ int main(int argc, char **argv)
         }
         timer_find_homo.stop();
         // 只在這裡重畫特徵點配對圖像
-        // 確保 img_ir 和 img_eo 尺寸正確
-        if (img_ir.size() != cv::Size(out_w, out_h)) {
-          cv::resize(img_ir, img_ir, cv::Size(out_w, out_h));
-        }
-        if (img_eo.size() != cv::Size(out_w, out_h)) {
-          cv::resize(img_eo, img_eo, cv::Size(out_w, out_h));
-        }
-        
-        // 創建固定尺寸的配對圖像
         temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);
-        img_ir.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
-        img_eo.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        cv::hconcat(img_ir, img_eo, temp_pair);
         if (eo_pts.size() > 0 && ir_pts.size() > 0) {
           for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
             cv::Point2i pt_ir = ir_pts[i];
@@ -550,7 +574,10 @@ int main(int argc, char **argv)
         // 回復原始版本：使用線性插值
         cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
         
+        // 高品質插值版本 (效果不佳，已停用)：
+        // cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar(0));
         timer_perspective.stop();
+        // cout << "  - Applied homography transformation to edge image (improved RANSAC)" << endl;
       }
       else
       {
@@ -565,31 +592,73 @@ int main(int argc, char **argv)
       
       timer_base.stop();
       
-      // 輸出影像，確保所有影像尺寸正確
+      // 輸出影像，與Python相同
       Mat img;
-      // 確保所有影像尺寸正確
-      cv::Size target_size(out_w, out_h);
-      
-      // 檢查並調整 temp_pair 的尺寸
-      if (temp_pair.size() != cv::Size(out_w * 2, out_h)) {
-        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h));
-      }
-      
-      // 檢查並調整 img_combined 的尺寸
-      if (img_combined.size() != target_size) {
-        cv::resize(img_combined, img_combined, target_size);
-      }
-      
-      // 創建固定尺寸的輸出影像
-      img = cv::Mat(out_h, out_w * 3, CV_8UC3);
-      
-      // 複製影像到對應位置
-      temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
-      img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
+      cv::hconcat(temp_pair, img_combined, img);
       
       // 顯示處理結果
       imshow("out", img);
 
+      /*
+      // 原始程式碼註解掉：
+      vector<cv::Point2i> eo_pts, ir_pts;
+      {
+        // cv::Mat H = image_perspective->get_perspective_matrix();
+        cv::Mat H;
+        timer_align.start();
+        image_align->align(eo_gray, ir_gray, eo_pts, ir_pts, H);
+        timer_align.stop();
+      }
+
+      {
+        timer_find_homo.start();
+        bool sta = image_perspective->find_perspective_matrix_msac(eo_pts, ir_pts);
+        timer_find_homo.stop();
+      }
+
+      // MODIFIED: 直接使用目標尺寸進行變換，移除後續裁剪
+      // 原本: eo_wrap = image_perspective->wrap(eo_gray, eo_new_w, out_h);
+      //       eo_wrap = image_resizer->clip_eo(eo_wrap);
+      // 現在: eo_wrap = image_perspective->wrap(eo_gray, out_w, out_h);
+      {
+        timer_perspective.start();
+        eo_wrap = image_perspective->wrap(eo_gray, out_w, out_h);
+        timer_perspective.stop();
+      }
+
+      {
+        timer_fusion.start();
+        eo_edge = image_fusion->edge(eo_wrap);
+        timer_fusion.stop();
+      }
+
+      {
+        timer_edge.start();
+        out = image_fusion->fusion(eo_edge, ir_resize);
+        timer_edge.stop();
+      }
+
+      timer_base.stop();
+
+      // MODIFIED: 視覺化關鍵點時的座標計算
+      // 原本: int bias = image_resizer->get_eo_clip_x();
+      //       cv::Point2i ir_pt(ir_pts[i].x + eo_new_w - bias, ir_pts[i].y);
+      // 現在: cv::Point2i ir_pt(ir_pts[i].x + out_w, ir_pts[i].y);
+      Mat catArr[] = {eo_resize, ir_resize, out};
+      Mat cat;
+      cv::hconcat(catArr, 3, cat);
+
+      for (int i = 0; i < eo_pts.size(); i++)
+      {
+        cv::Point2i eo_pt(eo_pts[i].x, eo_pts[i].y);
+        cv::Point2i ir_pt(ir_pts[i].x + out_w, ir_pts[i].y);
+        cv::circle(cat, eo_pt, 2, cv::Scalar(0, 0, 255), -1);
+        cv::circle(cat, ir_pt, 2, cv::Scalar(0, 255, 0), -1);
+        cv::line(cat, eo_pt, ir_pt, cv::Scalar(255, 0, 0), 1);
+      }
+
+      imshow("out", cat);
+      */
 
       if (isVideo)
       {
@@ -600,6 +669,8 @@ int main(int argc, char **argv)
         if (key == 27)
           return 0;
           
+        // ADDED: 加入Python風格的frame rate調整
+        // Python: for _ in range(rate - 1): ret_ir, frame_ir = cap_ir.read()
         for (int i = 0; i < frame_rate - 1; i++)
         {
           Mat temp_ir;
