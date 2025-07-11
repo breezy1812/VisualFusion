@@ -1,0 +1,642 @@
+#include <ratio>
+#include <chrono>
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <pthread.h>
+#include <filesystem>
+#include <opencv2/opencv.hpp>
+#include <opencv2/calib3d.hpp>  // ADDED: 確保包含homography相關函數
+
+#include "lib_image_fusion/include/core_image_to_gray.h"
+#include "lib_image_fusion/src/core_image_to_gray.cpp"
+
+#include "lib_image_fusion/include/core_image_resizer.h"
+#include "lib_image_fusion/src/core_image_resizer.cpp"
+
+#include "lib_image_fusion/include/core_image_fusion.h"
+#include "lib_image_fusion/src/core_image_fusion.cpp"
+
+#include "lib_image_fusion/include/core_image_perspective.h"
+#include "lib_image_fusion/src/core_image_perspective.cpp"
+
+// =============== 選擇版本：註解掉不需要的版本 ===============
+// 版本 1: ONNX 版本
+// #include "lib_image_fusion/include/core_image_align_onnx.h"
+// #include "lib_image_fusion/src/core_image_align_onnx.cpp"
+
+// 版本 2: LibTorch 版本 (註解掉以使用 ONNX)
+#include "lib_image_fusion/include/core_image_align_libtorch.h"
+#include "lib_image_fusion/src/core_image_align_libtorch.cpp"
+
+#include "utils/include/util_timer.h"
+#include "utils/src/util_timer.cpp"
+
+#include "nlohmann/json.hpp"
+
+using namespace cv;
+using namespace std;
+using namespace filesystem;
+using json = nlohmann::json;
+
+// show error message
+inline void alert(const string &msg)
+{
+  std::cout << string("\033[1;31m[ ERROR ]\033[0m ") + msg << std::endl;
+}
+
+// check file exit
+inline bool is_file_exit(const string &path)
+{
+  bool res = is_regular_file(path);
+  if (!res)
+    alert(string("File not found: ") + path);
+  return res;
+}
+
+// check directory exit
+inline bool is_dir_exit(const string &path)
+{
+  bool res = is_directory(path);
+  if (!res)
+    alert(string("File not found: ") + path);
+  return res;
+}
+
+// init config
+inline void init_config(nlohmann::json &config)
+{
+  config.emplace("input_dir", "./input");
+  config.emplace("output_dir", "./output");
+  config.emplace("output", false);
+
+  config.emplace("device", "cpu");
+  config.emplace("pred_mode", "fp32");
+  config.emplace("model_path", "./model/SemLA_jit_cpu.zip");
+
+  config.emplace("Vcut_x", 0);
+  config.emplace("Vcut_y", 0);
+  config.emplace("Vcut_h", -1); // -1 means no cut, use full image height
+  config.emplace("Vcut_w", -1); // -1 means no cut, use full image width
+
+  config.emplace("output_width", 480);
+  config.emplace("output_height", 360);
+
+  config.emplace("pred_width", 480);//480,360
+  config.emplace("pred_height", 360);// 640 480
+
+  config.emplace("fusion_shadow", false);
+  config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
+  config.emplace("fusion_threshold_equalization", 128);
+  config.emplace("fusion_threshold_equalization_low", 72);
+  config.emplace("fusion_threshold_equalization_high", 192);
+  config.emplace("fusion_threshold_equalization_zero", 64);
+
+  config.emplace("perspective_check", true);
+  config.emplace("perspective_distance", 10);
+  config.emplace("perspective_accuracy", 0.85);
+
+  config.emplace("align_angle_sort", 0.6);
+  config.emplace("align_angle_mean", 10.0);
+  config.emplace("align_distance_last", 10.0);
+  config.emplace("align_distance_line", 10.0);
+
+  config.emplace("skip_frames", nlohmann::json::object());
+}
+
+cv::Mat cropImage(const cv::Mat& sourcePic, int x, int y, int w, int h) {
+    // 邊界檢查，確保不超出原圖
+    int crop_x = std::max(0, x);
+    int crop_y = std::max(0, y);
+    int crop_w = w;
+    int crop_h = h;
+    if (w < 0) {
+        crop_w = sourcePic.cols - crop_x;
+    }
+    if (h < 0) {
+        crop_h = sourcePic.rows - crop_y;
+    }
+    crop_w = std::min(crop_w, sourcePic.cols - crop_x);
+    crop_h = std::min(crop_h, sourcePic.rows - crop_y);
+    cv::Rect roi(crop_x, crop_y, crop_w, crop_h);
+    return sourcePic(roi).clone();
+}
+
+// get pair file
+inline bool get_pair(const string &path, string &eo_path, string &ir_path)
+{
+  ir_path = path;
+  eo_path = path;
+
+  if (path.find("_EO") != string::npos)
+    ir_path.replace(ir_path.find("_EO"), 3, "_IR");
+  else
+    return false;
+
+  // 檢查檔案是否存在
+  if (!is_file_exit(eo_path))
+    return false;
+  if (!is_file_exit(ir_path))
+    return false;
+
+  return true;
+}
+
+// check file is video or image
+inline bool is_video(const string &path)
+{
+  std::vector<string> video_ext = {".mp4", ".avi", ".mov", ".MP4", ".AVI", ".MOV"};
+  for (const string &ext : video_ext)
+    if (path.find(ext) != string::npos)
+      return true;
+  return false;
+}
+
+// skip frames
+inline void skip_frames(const string &path, cv::VideoCapture &cap, nlohmann::json &config)
+{
+  nlohmann::json skip_frames = config["skip_frames"];
+  if (skip_frames.empty())
+    return;
+
+  string file = path.substr(path.find_last_of("/\\") + 1);
+  string name = file.substr(0, file.find_last_of("."));
+
+  int skip = 0;
+
+  if (skip_frames.contains(name))
+    skip = skip_frames[name];
+
+  if (skip > 0)
+    cap.set(cv::CAP_PROP_POS_FRAMES, skip);
+}
+
+// REMOVED: 時間延遲處理函數已移除，因為採用Python風格的每幀處理
+
+int main(int argc, char **argv)
+{
+  // 新增: 追蹤特徵點座標範圍
+  int min_x = INT_MAX, max_x = INT_MIN;
+  int min_y = INT_MAX, max_y = INT_MIN;
+  string current_video = "";
+
+  // ----- Config -----
+  json config;
+  string config_path = "./config/config.json";
+  {
+    // check argument
+    if (argc > 1)
+      config_path = argv[1];
+
+    // check config file
+    if (!is_file_exit(config_path))
+      return 0;
+
+    // read config file
+    ifstream temp(config_path);
+    temp >> config;
+
+    // init
+    init_config(config);
+  }
+
+  // ----- Input / Output -----
+  // input and output directory
+  bool isOut = config["output"];
+  string input_dir = config["input_dir"];
+  string output_dir = config["output_dir"];
+  {
+    // show directories
+    cout << "[ Directories ]" << endl;
+
+    // check input directory
+    if (!is_dir_exit(input_dir))
+      return 0;
+    cout << "\t Input: " << input_dir << endl;
+
+    // check output directory
+    if (isOut)
+    {
+      if (!is_dir_exit(output_dir))
+        return 0;
+      cout << "\tOutput: " << output_dir << endl;
+    }
+  }
+
+  // ----- Get Config -----
+  // get output and predict size
+  int out_w = config["output_width"], out_h = config["output_height"];
+  int pred_w = config["pred_width"], pred_h = config["pred_height"];
+
+  // get Vcut parameter
+  bool isVideoCut = config["VideoCut"];
+  int Vcut_x = config["Vcut_x"];//3840*2160
+  int Vcut_y = config["Vcut_y"];
+  int Vcut_w = config["Vcut_w"];
+  int Vcut_h = config["Vcut_h"];
+
+  bool isPictureCut = config["PictureCut"];
+  int Pcut_x = config["Pcut_x"];//1920*1080
+  int Pcut_y = config["Pcut_y"];
+  int Pcut_w = config["Pcut_w"];
+  int Pcut_h = config["Pcut_h"];
+
+
+  // get model info
+  string device = config["device"];
+  string pred_mode = config["pred_mode"];
+  string model_path = config["model_path"];
+
+  // get fusion parameter
+  bool fusion_shadow = config["fusion_shadow"];
+  int fusion_edge_border = config["fusion_edge_border"];
+  int fusion_threshold_equalization = config["fusion_threshold_equalization"];
+  int fusion_threshold_equalization_low = config["fusion_threshold_equalization_low"];
+  int fusion_threshold_equalization_high = config["fusion_threshold_equalization_high"];
+  int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
+
+  // get perspective parameter
+  bool perspective_check = config["perspective_check"];
+  float perspective_distance = config["perspective_distance"];
+  float perspective_accuracy = config["perspective_accuracy"];
+
+  // get align parameter
+  float align_angle_mean = config["align_angle_mean"];
+  float align_angle_sort = config["align_angle_sort"];
+  float align_distance_last = config["align_distance_last"];
+  float align_distance_line = config["align_distance_line"];
+
+  // show config
+  {
+    cout << "[ Config ]" << endl;
+    cout << "\tOutput Size: " << out_w << " x " << out_h << endl;
+    cout << "\tPredict Size: " << pred_w << " x " << pred_h << endl;
+    cout << "\tModel Path: " << model_path << endl;
+    cout << "\tDevice: " << device << endl;
+    cout << "\tPred Mode: " << pred_mode << endl;
+    cout << "\tFusion Shadow: " << fusion_shadow << endl;
+    cout << "\tFusion Edge Border: " << fusion_edge_border << endl;
+    cout << "\tFusion Threshold Equalization: " << fusion_threshold_equalization << endl;
+    cout << "\tFusion Threshold Equalization Low: " << fusion_threshold_equalization_low << endl;
+    cout << "\tFusion Threshold Equalization High: " << fusion_threshold_equalization_high << endl;
+    cout << "\tFusion Threshold Equalization Zero: " << fusion_threshold_equalization_zero << endl;
+    cout << "\tPerspective Check: " << perspective_check << endl;
+    cout << "\tPerspective Distance: " << perspective_distance << endl;
+    cout << "\tPerspective Accuracy: " << perspective_accuracy << endl;
+    cout << "\tAlign Angle Mean: " << align_angle_mean << endl;
+    cout << "\tAlign Angle Sort: " << align_angle_sort << endl;
+    cout << "\tAlign Distance Last: " << align_distance_last << endl;
+    cout << "\tAlign Distance Line: " << align_distance_line << endl;
+  }
+
+  // ----- Start -----
+  for (const auto &file : directory_iterator(input_dir))
+  {
+    // Get file path and name
+    string eo_path, ir_path, save_path = output_dir;
+    bool isPair = get_pair(file.path().string(), eo_path, ir_path);
+    if (!isPair)
+      continue;
+    else
+    {
+      // save path
+      string file = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+      string name = file.substr(0, file.find_last_of("."));
+      if (save_path.back() != '/' && save_path.back() != '\\')
+        save_path += "/";
+      save_path += name;
+    }
+
+    // Check file is video
+    bool isVideo = is_video(eo_path);
+
+    // Get frame size, frame rate, and create capture/writer
+    int eo_w, eo_h, ir_w, ir_h, frame_rate;
+    VideoCapture eo_cap, ir_cap;
+    VideoWriter writer;
+    if (isVideo)
+    {
+      eo_cap.open(eo_path);
+      ir_cap.open(ir_path);
+      skip_frames(eo_path, eo_cap, config);
+      skip_frames(ir_path, ir_cap, config);
+
+      eo_w = (int)eo_cap.get(3), eo_h = (int)eo_cap.get(4);
+      ir_w = (int)ir_cap.get(3), ir_h = (int)ir_cap.get(4);
+      
+      int fps_ir = (int)ir_cap.get(cv::CAP_PROP_FPS);
+      int fps_eo = (int)eo_cap.get(cv::CAP_PROP_FPS);
+      frame_rate = fps_ir / fps_eo;
+      
+      cout << "  - IR: " << fps_ir << " fps, " << ir_w << "x" << ir_h << endl;
+      cout << "  - EO: " << fps_eo << " fps, " << eo_w << "x" << eo_h << endl;
+      cout << "  - Rate: " << frame_rate << " (IR:EO)" << endl;
+      
+      if (isOut)
+      {
+        writer.open(save_path + "cutCam1.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+      }
+    }
+    else
+    {
+      Mat eo = imread(eo_path);
+      Mat ir = imread(ir_path);
+      eo_w = eo.cols, eo_h = eo.rows;
+      ir_w = ir.cols, ir_h = ir.rows;
+    }
+
+    // Create instance
+    auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
+
+    auto image_resizer = core::ImageResizer::create_instance(
+        core::ImageResizer::Param()
+            .set_eo(out_w, out_h)
+            .set_ir(out_w, out_h));
+
+    auto image_fusion = core::ImageFusion::create_instance(
+        core::ImageFusion::Param()
+            .set_shadow(fusion_shadow)
+            .set_edge_border(fusion_edge_border)  // 直接在這裡設置較大的值
+            .set_threshold_equalization_high(fusion_threshold_equalization_high)
+            .set_threshold_equalization_low(fusion_threshold_equalization_low)
+            .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
+
+    auto image_perspective = core::ImagePerspective::create_instance(
+        core::ImagePerspective::Param()
+            .set_check(perspective_check, perspective_accuracy, perspective_distance));
+
+    // =============== 選擇版本：註解掉不需要的版本 ===============
+    // 版本 1: ONNX 版本
+    /*
+    auto image_align = core::ImageAlignONNX::create_instance(
+        core::ImageAlignONNX::Param()
+            .set_size(pred_w, pred_h, out_w, out_h)
+            .set_model(device, model_path)
+            .set_bias(0, 0));
+    */
+
+    // 版本 2: LibTorch 版本
+    auto image_align = core::ImageAlign::create_instance(
+        core::ImageAlign::Param()
+            .set_size(pred_w, pred_h, out_w, out_h)
+            .set_net(device, model_path, pred_mode)
+            .set_distance(align_distance_line, align_distance_last, 20)
+            .set_angle(align_angle_mean, align_angle_sort)
+            .set_bias(0, 0));
+
+    // 開始計時
+    auto timer_base = core::Timer("All");
+    auto timer_resize = core::Timer("Resize");
+    auto timer_gray = core::Timer("Gray");
+    auto timer_equalization = core::Timer("Equalization");
+    auto timer_perspective = core::Timer("Perspective");
+    auto timer_find_homo = core::Timer("Homo");
+    auto timer_fusion = core::Timer("Fusion");
+    auto timer_edge = core::Timer("Edge");
+    auto timer_align = core::Timer("Align");
+
+    // 讀取影片
+    Mat eo, ir;
+    
+    int cnt = 0;  // 幀數計數器
+    cv::Mat M;    // Homography矩陣
+    Mat temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);  // 儲存特徵點配對圖像
+    std::vector<cv::Point2i> eo_pts, ir_pts; // 保留特徵點
+    const int compute_per_frame = 50; // 每50幀做一次
+
+    while (1)
+    {
+
+
+      if (isVideo)
+      {
+        ir_cap.read(ir);
+        eo_cap.read(eo);
+        // 新增：eo每一幀都經過裁切（預設裁切全圖）
+        if (isVideoCut) {
+          eo = cropImage(eo, Vcut_x, Vcut_y, Vcut_w, Vcut_h);
+          //3840*2160
+        }
+      }
+      else
+      {
+        eo = cv::imread(eo_path);
+        ir = cv::imread(ir_path);
+        // 新增：eo先經過裁切（預設裁切全圖）
+        if (isPictureCut) {
+          eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
+        }
+      }
+
+      // 退出迴圈條件
+      if (eo.empty() || ir.empty())
+        break;
+
+      // 幀數計數
+      timer_base.start();
+
+      
+      // 新程式碼：按照Python版本
+      Mat img_ir, img_eo, gray_ir, gray_eo;
+      
+      // Resize圖像，回復原始版本
+      {
+        timer_resize.start();
+        // 回復原始版本：預設插值方法
+        cv::resize(ir, img_ir, cv::Size(out_w, out_h));
+        cv::resize(eo, img_eo, cv::Size(out_w, out_h));
+        
+        timer_resize.stop();
+      }
+      
+      // 轉換為灰度圖像，與Python相同
+      {
+        timer_gray.start();
+        cv::cvtColor(img_ir, gray_ir, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(img_eo, gray_eo, cv::COLOR_BGR2GRAY);
+        timer_gray.stop();
+      }
+
+      // 每50幀計算一次特徵點
+      if (cnt % compute_per_frame == 0) {
+        eo_pts.clear(); ir_pts.clear();
+        timer_align.start();
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M);
+        cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
+        timer_align.stop();
+
+        // 更新特徵點座標範圍
+        for (const auto& pt : eo_pts) {
+          min_x = std::min(min_x, pt.x);
+          max_x = std::max(max_x, pt.x);
+          min_y = std::min(min_y, pt.y);
+          max_y = std::max(max_y, pt.y);
+        }
+
+        timer_find_homo.start();
+        if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
+          vector<cv::Point2f> eo_pts_f, ir_pts_f;
+          for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+          for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+          cv::Mat mask;
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 15.0, mask, 8000, 0.95);
+          if (!H.empty() && !mask.empty()) {
+            int inliers = cv::countNonZero(mask);
+            if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
+              M = H.clone();
+              // 過濾inlier特徵點
+              std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
+              for (int i = 0; i < mask.rows; i++) {
+                if (mask.at<uchar>(i, 0) > 0) {
+                  filtered_eo_pts.push_back(eo_pts[i]);
+                  filtered_ir_pts.push_back(ir_pts[i]);
+                }
+              }
+              eo_pts = filtered_eo_pts;
+              ir_pts = filtered_ir_pts;
+            } else {
+              M = cv::Mat::eye(3, 3, CV_64F);
+            }
+          } else {
+            M = cv::Mat::eye(3, 3, CV_64F);
+          }
+        } else {
+          M = cv::Mat::eye(3, 3, CV_64F);
+        }
+        timer_find_homo.stop();
+        // 只在這裡重畫特徵點配對圖像
+        // 確保 img_ir 和 img_eo 尺寸正確
+        if (img_ir.size() != cv::Size(out_w, out_h)) {
+          cv::resize(img_ir, img_ir, cv::Size(out_w, out_h));
+        }
+        if (img_eo.size() != cv::Size(out_w, out_h)) {
+          cv::resize(img_eo, img_eo, cv::Size(out_w, out_h));
+        }
+        
+        // 創建固定尺寸的配對圖像
+        temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);
+        img_ir.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        img_eo.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        if (eo_pts.size() > 0 && ir_pts.size() > 0) {
+          for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
+            cv::Point2i pt_ir = ir_pts[i];
+            cv::Point2i pt_eo = eo_pts[i];
+            pt_eo.x += out_w;
+            if (pt_ir.x >= 0 && pt_ir.x < out_w && pt_ir.y >= 0 && pt_ir.y < out_h &&
+                pt_eo.x >= out_w && pt_eo.x < out_w * 2 && pt_eo.y >= 0 && pt_eo.y < out_h) {
+              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1);
+              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1);
+              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1);
+            }
+          }
+        }
+      }
+      // 其餘幀直接沿用上一次的M、特徵點、temp_pair
+
+      // 邊緣檢測和融合處理，與Python相同
+      Mat edge, img_combined;
+      
+      {
+        timer_edge.start();
+        edge = image_fusion->edge(gray_eo);
+        timer_edge.stop();
+      }
+      
+      // 將EO影像轉換到IR的座標系統，如果有有效的homography矩陣
+      Mat edge_warped = edge.clone();
+      if (!M.empty() && cv::determinant(M) > 1e-6) // 檢查矩陣是否有效
+      {
+        timer_perspective.start();
+        // 回復原始版本：使用線性插值
+        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        
+        timer_perspective.stop();
+      }
+      else
+      {
+        cout << "  - Using original edge image (no valid homography)" << endl;
+      }
+      
+      {
+        timer_fusion.start();
+        img_combined = image_fusion->fusion(edge_warped, img_ir);
+        timer_fusion.stop();
+      }
+      
+      timer_base.stop();
+      
+      // 輸出影像，確保所有影像尺寸正確
+      Mat img;
+      // 確保所有影像尺寸正確
+      cv::Size target_size(out_w, out_h);
+      
+      // 檢查並調整 temp_pair 的尺寸
+      if (temp_pair.size() != cv::Size(out_w * 2, out_h)) {
+        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h));
+      }
+      
+      // 檢查並調整 img_combined 的尺寸
+      if (img_combined.size() != target_size) {
+        cv::resize(img_combined, img_combined, target_size);
+      }
+      
+      // 創建固定尺寸的輸出影像
+      img = cv::Mat(out_h, out_w * 3, CV_8UC3);
+      
+      // 複製影像到對應位置
+      temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
+      img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
+      
+      // 顯示處理結果
+      imshow("out", img);
+
+
+      if (isVideo)
+      {
+        if (isOut)
+          writer.write(img);
+
+        int key = waitKey(1);
+        if (key == 27)
+          return 0;
+          
+        for (int i = 0; i < frame_rate - 1; i++)
+        {
+          Mat temp_ir;
+          ir_cap.read(temp_ir);
+        }
+      }
+      else
+      {
+        if (isOut)
+          imwrite(save_path + ".jpg", img);
+
+        int key = waitKey(0);
+        if (key == 27)
+          return 0;
+
+        break;
+      }
+      
+      // 增加幀數計數器
+      cnt++;
+    }
+
+    timer_resize.show();
+    timer_gray.show();
+    // REMOVED: timer_clip.show(); - 移除裁剪計時器顯示
+    timer_equalization.show();
+    timer_find_homo.show();
+    timer_edge.show();
+    timer_perspective.show();
+    timer_fusion.show();
+    timer_align.show();
+
+    eo_cap.release();
+    ir_cap.release();
+    if (isOut)
+      writer.release();
+
+    // return 0;
+  }
+}

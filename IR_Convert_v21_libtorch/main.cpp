@@ -5,6 +5,8 @@
 #include <iostream>
 #include <pthread.h>
 #include <filesystem>
+#include <cmath>
+#include <limits>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>  // ADDED: 確保包含homography相關函數
 
@@ -86,7 +88,7 @@ inline void init_config(nlohmann::json &config)
   config.emplace("pred_height", 360);// 640 480
 
   config.emplace("fusion_shadow", false);
-  config.emplace("fusion_edge_border", 1);
+  config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
   config.emplace("fusion_threshold_equalization", 128);
   config.emplace("fusion_threshold_equalization_low", 72);
   config.emplace("fusion_threshold_equalization_high", 192);
@@ -100,6 +102,11 @@ inline void init_config(nlohmann::json &config)
   config.emplace("align_angle_mean", 10.0);
   config.emplace("align_distance_last", 10.0);
   config.emplace("align_distance_line", 10.0);
+
+  // 平滑 homography 相關參數
+  config.emplace("smooth_max_translation_diff", 15.0);  // 最大允許平移差異 (像素) - 降低閾值
+  config.emplace("smooth_max_rotation_diff", 0.02);     // 最大允許旋轉差異 (弧度) - 降低閾值
+  config.emplace("smooth_alpha", 0.03);                 // 平滑係數 (0-1, 越小越平滑) - 降低係數
 
   config.emplace("skip_frames", nlohmann::json::object());
 }
@@ -172,6 +179,94 @@ inline void skip_frames(const string &path, cv::VideoCapture &cap, nlohmann::jso
 }
 
 // REMOVED: 時間延遲處理函數已移除，因為採用Python風格的每幀處理
+
+// 平滑 Homography 管理器類
+class SmoothHomographyManager {
+private:
+    double max_translation_diff;
+    double max_rotation_diff;
+    double smooth_alpha;
+    cv::Mat previous_homo;
+    
+public:
+    SmoothHomographyManager(double max_trans_diff = 30.0, double max_rot_diff = 0.03, double alpha = 0.05) 
+        : max_translation_diff(max_trans_diff), max_rotation_diff(max_rot_diff), smooth_alpha(alpha) {}
+    
+    // 計算兩個 homography 矩陣的差異
+    std::pair<double, double> calculateHomographyDifference(const cv::Mat& homo1, const cv::Mat& homo2) {
+        if (homo1.empty() || homo2.empty()) {
+            return {std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+        }
+        
+        // 計算平移差異
+        double translation_diff = sqrt(pow(homo1.at<double>(0, 2) - homo2.at<double>(0, 2), 2) +
+                                     pow(homo1.at<double>(1, 2) - homo2.at<double>(1, 2), 2));
+        
+        // 計算旋轉差異（通過2x2左上角矩陣）
+        double angle1 = atan2(homo1.at<double>(1, 0), homo1.at<double>(0, 0));
+        double angle2 = atan2(homo2.at<double>(1, 0), homo2.at<double>(0, 0));
+        double rotation_diff = abs(angle1 - angle2);
+        
+        // 處理角度循環問題
+        if (rotation_diff > M_PI) {
+            rotation_diff = 2 * M_PI - rotation_diff;
+        }
+        
+        return {translation_diff, rotation_diff};
+    }
+    
+    // 判斷是否應該更新 homography
+    bool shouldUpdateHomography(const cv::Mat& new_homo) {
+        if (previous_homo.empty()) {
+            return true;
+        }
+        
+        auto [trans_diff, rot_diff] = calculateHomographyDifference(previous_homo, new_homo);
+        
+        // 如果差異太大，不更新
+        if (trans_diff > max_translation_diff || rot_diff > max_rotation_diff) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // 更新 homography 並進行平滑處理
+    cv::Mat updateHomography(const cv::Mat& new_homo) {
+        if (new_homo.empty()) {
+            return previous_homo;
+        }
+        
+        // 如果這是第一次更新，直接使用新的
+        if (previous_homo.empty()) {
+            previous_homo = new_homo.clone();
+            return new_homo;
+        }
+        
+        // 如果應該更新，使用平滑混合
+        if (shouldUpdateHomography(new_homo)) {
+            // 平滑混合: smooth_alpha * 新的 + (1-smooth_alpha) * 舊的
+            cv::Mat smoothed_homo = smooth_alpha * new_homo + (1 - smooth_alpha) * previous_homo;
+            previous_homo = smoothed_homo.clone();
+            return smoothed_homo;
+        } else {
+            // 差異太大，保持前一次的 homography
+            return previous_homo;
+        }
+    }
+    
+    // 獲取當前 homography
+    cv::Mat getCurrentHomography() {
+        return previous_homo;
+    }
+    
+    // 設置參數
+    void setParameters(double max_trans_diff, double max_rot_diff, double alpha) {
+        max_translation_diff = max_trans_diff;
+        max_rotation_diff = max_rot_diff;
+        smooth_alpha = alpha;
+    }
+};
 
 int main(int argc, char **argv)
 {
@@ -266,6 +361,11 @@ int main(int argc, char **argv)
   float align_distance_last = config["align_distance_last"];
   float align_distance_line = config["align_distance_line"];
 
+  // get smooth homography parameter
+  double smooth_max_translation_diff = config["smooth_max_translation_diff"];
+  double smooth_max_rotation_diff = config["smooth_max_rotation_diff"];
+  double smooth_alpha = config["smooth_alpha"];
+
   // show config
   {
     cout << "[ Config ]" << endl;
@@ -287,6 +387,9 @@ int main(int argc, char **argv)
     cout << "\tAlign Angle Sort: " << align_angle_sort << endl;
     cout << "\tAlign Distance Last: " << align_distance_last << endl;
     cout << "\tAlign Distance Line: " << align_distance_line << endl;
+    cout << "\tSmooth Max Translation Diff: " << smooth_max_translation_diff << endl;
+    cout << "\tSmooth Max Rotation Diff: " << smooth_max_rotation_diff << endl;
+    cout << "\tSmooth Alpha: " << smooth_alpha << endl;
   }
 
   // ----- Start -----
@@ -356,7 +459,7 @@ int main(int argc, char **argv)
     auto image_fusion = core::ImageFusion::create_instance(
         core::ImageFusion::Param()
             .set_shadow(fusion_shadow)
-            .set_edge_border(fusion_edge_border)
+            .set_edge_border(fusion_edge_border)  // 直接在這裡設置較大的值
             .set_threshold_equalization_high(fusion_threshold_equalization_high)
             .set_threshold_equalization_low(fusion_threshold_equalization_low)
             .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
@@ -403,6 +506,9 @@ int main(int argc, char **argv)
     Mat temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);  // 儲存特徵點配對圖像
     std::vector<cv::Point2i> eo_pts, ir_pts; // 保留特徵點
     const int compute_per_frame = 50; // 每50幀做一次
+    
+    // 初始化平滑 homography 管理器
+    SmoothHomographyManager homo_manager(smooth_max_translation_diff, smooth_max_rotation_diff, smooth_alpha);
 
     while (1)
     {
@@ -479,11 +585,34 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 15.0, mask, 8000, 0.85);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
-              M = H.clone();
+              // 使用平滑管理器來處理 homography 更新
+              if (homo_manager.getCurrentHomography().empty()) {
+                // 第一次 homography 計算
+                M = homo_manager.updateHomography(H);
+                cout << "  - Frame " << cnt << ": First homography computed" << endl;
+              } else {
+                // 檢查與前一次 homography 的差異
+                std::pair<double, double> diff = homo_manager.calculateHomographyDifference(
+                    homo_manager.getCurrentHomography(), H);
+                double trans_diff = diff.first;
+                double rot_diff = diff.second;
+                cout << "  - Frame " << cnt << ": Translation diff=" << trans_diff 
+                     << "px, Rotation diff=" << rot_diff << "rad" << endl;
+                
+                if (trans_diff > smooth_max_translation_diff || rot_diff > smooth_max_rotation_diff) {
+                  cout << "    -> Difference too large, keeping previous homography" << endl;
+                  M = homo_manager.getCurrentHomography();
+                } else {
+                  cout << "    -> Difference acceptable, smoothly updating homography (alpha=" 
+                       << smooth_alpha << ")" << endl;
+                  M = homo_manager.updateHomography(H);
+                }
+              }
+              
               // 過濾inlier特徵點
               std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
               for (int i = 0; i < mask.rows; i++) {
@@ -495,13 +624,28 @@ int main(int argc, char **argv)
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
             } else {
-              M = cv::Mat::eye(3, 3, CV_64F);
+              // 如果品質不好，使用之前的 homography
+              M = homo_manager.getCurrentHomography();
+              if (M.empty()) {
+                M = cv::Mat::eye(3, 3, CV_64F);
+              }
+              cout << "  - Frame " << cnt << ": Poor quality homography, using previous" << endl;
             }
           } else {
-            M = cv::Mat::eye(3, 3, CV_64F);
+            // 如果無法計算 homography，使用之前的
+            M = homo_manager.getCurrentHomography();
+            if (M.empty()) {
+              M = cv::Mat::eye(3, 3, CV_64F);
+            }
+            cout << "  - Frame " << cnt << ": Cannot compute homography, using previous" << endl;
           }
         } else {
-          M = cv::Mat::eye(3, 3, CV_64F);
+          // 如果特徵點不足，使用之前的 homography
+          M = homo_manager.getCurrentHomography();
+          if (M.empty()) {
+            M = cv::Mat::eye(3, 3, CV_64F);
+          }
+          cout << "  - Frame " << cnt << ": Insufficient feature points, using previous" << endl;
         }
         timer_find_homo.stop();
         // 只在這裡重畫特徵點配對圖像
@@ -529,6 +673,12 @@ int main(int argc, char **argv)
               cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1);
             }
           }
+        }
+      } else {
+        // 非計算幀，使用當前的 homography
+        M = homo_manager.getCurrentHomography();
+        if (M.empty()) {
+          M = cv::Mat::eye(3, 3, CV_64F);
         }
       }
       // 其餘幀直接沿用上一次的M、特徵點、temp_pair
