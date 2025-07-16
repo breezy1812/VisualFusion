@@ -417,6 +417,7 @@ int main(int argc, char **argv)
     int eo_w, eo_h, ir_w, ir_h, frame_rate;
     VideoCapture eo_cap, ir_cap;
     VideoWriter writer;
+    VideoWriter writer_fusion; // 新增：只輸出融合圖的影片
     if (isVideo)
     {
       eo_cap.open(eo_path);
@@ -438,6 +439,7 @@ int main(int argc, char **argv)
       if (isOut)
       {
         writer.open(save_path + "cutCam1.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+        writer_fusion.open(save_path + "_fusion.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w, out_h));
       }
     }
     else
@@ -528,12 +530,127 @@ int main(int argc, char **argv)
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
-        // 新增：eo先經過裁切（預設裁切全圖）
+        // 第一次裁剪
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
+        // resize
+        cv::Mat eo_resized, ir_resized;
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
+        // 轉灰階
+        cv::Mat gray_eo, gray_ir;
+        cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
+        // 第一次model對齊
+        eo_pts.clear(); ir_pts.clear();
+        cv::Mat M1;
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M1);
+        // 取得對齊後的重疊區域
+        std::vector<cv::Point2f> eo_corners = { {0,0}, {(float)eo_resized.cols,0}, {(float)eo_resized.cols,(float)eo_resized.rows}, {0,(float)eo_resized.rows} };
+        std::vector<cv::Point2f> eo_proj(4);
+        if (!M1.empty() && eo_pts.size() >= 4 && ir_pts.size() >= 4)
+          cv::perspectiveTransform(eo_corners, eo_proj, M1);
+        else
+          eo_proj = eo_corners;
+        // 計算重疊區域的邊界
+        float min_x=1e6, min_y=1e6, max_x=-1e6, max_y=-1e6;
+        for (const auto& pt : eo_proj) {
+          min_x = std::min(min_x, pt.x);
+          min_y = std::min(min_y, pt.y);
+          max_x = std::max(max_x, pt.x);
+          max_y = std::max(max_y, pt.y);
+        }
+        // 邊界加50px容錯，不能超出圖像範圍
+        int pad = 50;
+        int crop_x = std::max(0, (int)std::floor(min_x) - pad);
+        int crop_y = std::max(0, (int)std::floor(min_y) - pad);
+        int crop_w = std::min((int)std::ceil(max_x) + pad, eo_resized.cols) - crop_x;
+        int crop_h = std::min((int)std::ceil(max_y) + pad, eo_resized.rows) - crop_y;
+        if (min_x <= 0) crop_x = 0;
+        if (min_y <= 0) crop_y = 0;
+        if (max_x >= eo_resized.cols) crop_w = eo_resized.cols - crop_x;
+        if (max_y >= eo_resized.rows) crop_h = eo_resized.rows - crop_y;
+        // 第二次裁剪
+        cv::Mat eo_crop2 = eo_resized(cv::Rect(crop_x, crop_y, crop_w, crop_h)).clone();
+        cv::Mat eo_crop2_resized;
+        cv::resize(eo_crop2, eo_crop2_resized, cv::Size(out_w, out_h));
+        cv::Mat gray_eo2;
+        cv::cvtColor(eo_crop2_resized, gray_eo2, cv::COLOR_BGR2GRAY);
+        // 第二次model對齊
+        eo_pts.clear(); ir_pts.clear();
+        cv::Mat M2;
+        image_align->align(gray_eo2, gray_ir, eo_pts, ir_pts, M2);
+        // ========== 新增：RANSAC 濾除 outlier，提升精度 ==========
+        cv::Mat refined_H = M2.clone();
+        if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
+          std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
+          for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+          for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+          cv::Mat mask;
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
+          if (!H.empty() && !mask.empty()) {
+            int inliers = cv::countNonZero(mask);
+            if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
+              refined_H = H;
+              // 過濾 inlier 特徵點
+              std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
+              for (int i = 0; i < mask.rows; i++) {
+                if (mask.at<uchar>(i, 0) > 0) {
+                  filtered_eo_pts.push_back(eo_pts[i]);
+                  filtered_ir_pts.push_back(ir_pts[i]);
+                }
+              }
+              eo_pts = filtered_eo_pts;
+              ir_pts = filtered_ir_pts;
+            }
+          }
+        }
+        // 用 refined homography 做後續處理
+        M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        // ========== 新增：圖片模式下也畫點、畫線、組合顯示並儲存 ==========
+        // 準備 temp_pair
+        cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
+        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        eo_crop2_resized.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        if (eo_pts.size() > 0 && ir_pts.size() > 0) {
+          for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
+            cv::Point2i pt_ir = ir_pts[i];
+            cv::Point2i pt_eo = eo_pts[i];
+            pt_eo.x += out_w;
+            if (pt_ir.x >= 0 && pt_ir.x < out_w && pt_ir.y >= 0 && pt_ir.y < out_h &&
+                pt_eo.x >= out_w && pt_eo.x < out_w * 2 && pt_eo.y >= 0 && pt_eo.y < out_h) {
+              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1);
+              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1);
+              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1);
+            }
+          }
+        }
+        // 邊緣檢測
+        cv::Mat edge = image_fusion->edge(gray_eo2);
+        // warp edge
+        cv::Mat edge_warped = edge.clone();
+        if (!M.empty() && cv::determinant(M) > 1e-6) {
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        }
+        // 融合
+        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
+        // 組合顯示
+        cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
+        temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
+        img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
+        // 顯示
+        imshow("out", img);
+        if (isOut) {
+          imwrite(save_path + ".jpg", img);
+          imwrite(save_path + "_fusion.jpg", img_combined); // 新增：只輸出融合圖
+        }
+        int key = waitKey(0);
+        if (key == 27)
+          return 0;
+        // 完成後直接break，避免進入影片專用流程
+        break;
       }
-
       // 退出迴圈條件
       if (eo.empty() || ir.empty())
         break;
@@ -585,7 +702,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
@@ -743,8 +860,10 @@ int main(int argc, char **argv)
 
       if (isVideo)
       {
-        if (isOut)
+        if (isOut) {
           writer.write(img);
+          writer_fusion.write(img_combined); // 新增：只寫融合圖
+        }
 
         int key = waitKey(1);
         if (key == 27)
@@ -786,6 +905,8 @@ int main(int argc, char **argv)
     ir_cap.release();
     if (isOut)
       writer.release();
+    if (isOut)
+      writer_fusion.release(); // 新增：釋放融合影片
 
     // return 0;
   }

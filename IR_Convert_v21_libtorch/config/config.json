@@ -1,6 +1,6 @@
 {
     "input_dir": "/circ330/circ_video/Version3",
-    "output_dir": "/circ330/Homo/Homo/outputtest/",
+    "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
     "device": "cuda",
@@ -46,7 +46,7 @@
     "smooth_max_translation_diff": 15.0,  
     "smooth_max_rotation_diff": 0.02,     
     "smooth_alpha": 0.03,   
-    
+
     "skip_frames":{
         "20231117_140552_523_IR": 95,
         "20231117_140617_461_IR": 68,
