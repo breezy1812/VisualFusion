@@ -215,11 +215,7 @@ namespace core
 
   cv::Mat ImageFusion::fusion(cv::Mat &eo, cv::Mat &ir)
   {
-    // MODIFIED: 完全按照Python程式碼實作融合
-    // 原始code註解掉: 複雜的邊緣疊加和陰影處理
-    
-    /*
-    // 原始程式碼：
+    // 恢復原始程式碼：支持邊緣疊加和陰影處理
     cv::Mat boder, shadow;
     cv::Mat out = ir.clone();
 
@@ -238,40 +234,6 @@ namespace core
     cv::cvtColor(boder, boder, cv::COLOR_GRAY2BGR);
     cv::add(out, boder, out);
 
-    return out;
-    */
-    
-    // 新程式碼：按照Python版本實作
-    // Python: img_combined = img_ir + edge; img_combined = np.clip(img_combined, 0, 255).astype(np.uint8)
-    
-    cv::Mat out;
-    
-    // 確保兩個輸入都是3通道
-    cv::Mat ir_3ch, eo_3ch;
-    
-    if (ir.channels() == 1)
-      cv::cvtColor(ir, ir_3ch, cv::COLOR_GRAY2BGR);
-    else
-      ir_3ch = ir.clone();
-    
-    if (eo.channels() == 1)
-    {
-      // 邊緣圖像轉換為3通道，模擬Python的np.repeat(edge, 3, axis=-1)
-      cv::cvtColor(eo, eo_3ch, cv::COLOR_GRAY2BGR);
-    }
-    else
-    {
-      eo_3ch = eo.clone();
-    }
-    
-    // 直接相加，與Python相同
-    cv::add(ir_3ch, eo_3ch, out);
-    
-    // Clip to [0, 255] range，與Python相同
-    cv::Mat clipped;
-    cv::threshold(out, clipped, 255, 255, cv::THRESH_TRUNC);
-    cv::threshold(clipped, out, 0, 0, cv::THRESH_TOZERO);
-    
     return out;
   }
 } /* namespace core */

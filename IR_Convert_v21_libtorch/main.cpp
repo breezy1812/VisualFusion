@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <cmath>
 #include <limits>
-#include <iomanip>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>  // ADDED: 確保包含homography相關函數
 
@@ -82,13 +81,13 @@ inline void init_config(nlohmann::json &config)
   config.emplace("Vcut_h", -1); // -1 means no cut, use full image height
   config.emplace("Vcut_w", -1); // -1 means no cut, use full image width
 
-  config.emplace("output_width", 320);
-  config.emplace("output_height", 240);
+  config.emplace("output_width", 480);
+  config.emplace("output_height", 360);
 
-  config.emplace("pred_width", 320);
-  config.emplace("pred_height", 240);
+  config.emplace("pred_width", 480);//480,360
+  config.emplace("pred_height", 360);// 640 480
 
-  config.emplace("fusion_shadow", false);
+  config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
   config.emplace("fusion_threshold_equalization", 128);
   config.emplace("fusion_threshold_equalization_low", 72);
@@ -269,122 +268,6 @@ public:
     }
 };
 
-// 新增：讀取GT homography的函數（圖片版本）
-cv::Mat readGTHomography(const std::string& gt_path, const std::string& img_name) {
-  std::string json_file = gt_path + "/IR_" + img_name + ".json";
-  
-  if (!std::filesystem::exists(json_file)) {
-    std::cout << "GT file not found: " << json_file << std::endl;
-    return cv::Mat();
-  }
-  
-  try {
-    std::ifstream file(json_file);
-    nlohmann::json j;
-    file >> j;
-    
-    cv::Mat H = cv::Mat::eye(3, 3, CV_64F);
-    auto h_array = j["H"];
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        H.at<double>(i, j) = h_array[i][j];
-      }
-    }
-    std::cout << "GT homography loaded from: " << json_file << std::endl;
-    return H;
-  } catch (const std::exception& e) {
-    std::cout << "Error reading GT homography from " << json_file << ": " << e.what() << std::endl;
-    return cv::Mat();
-  }
-}
-
-// 新增：讀取GT homography的函數（影片版本）
-cv::Mat readGTHomographyForVideo(const std::string& gt_path, int frame_idx) {
-  std::string json_file = gt_path + "/IR_" + std::to_string(frame_idx) + ".json";
-  
-  if (!std::filesystem::exists(json_file)) {
-    return cv::Mat();
-  }
-  
-  try {
-    std::ifstream file(json_file);
-    nlohmann::json j;
-    file >> j;
-    
-    cv::Mat H = cv::Mat::eye(3, 3, CV_64F);
-    auto h_array = j["H"];
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        H.at<double>(i, j) = h_array[i][j];
-      }
-    }
-    return H;
-  } catch (const std::exception& e) {
-    std::cout << "Error reading GT homography from " << json_file << ": " << e.what() << std::endl;
-    return cv::Mat();
-  }
-}
-
-// 新增：儲存誤差圖表的函數
-void saveErrorChart(const std::vector<int>& frames, 
-                    const std::vector<double>& euclidean_errors_no_smooth,
-                    const std::vector<double>& euclidean_errors_smooth,
-                    const std::vector<double>& normalized_euclidean_errors_no_smooth,
-                    const std::vector<double>& normalized_euclidean_errors_smooth,
-                    const std::vector<std::string>& reset_frames,
-                    const std::vector<std::string>& homo_status,
-                    const std::string& video_name) {
-  std::string csv_file = video_name + "_homo_errors.csv";
-  std::ofstream file(csv_file);
-  file << "Frame,Euclidean_Error_No_Smooth,Euclidean_Error_Smooth,Normalized_Euclidean_Error_No_Smooth,Normalized_Euclidean_Error_Smooth,Reset_Frame,Homo_Status\n";
-  for (size_t i = 0; i < frames.size(); i++) {
-    file << frames[i] << "," << euclidean_errors_no_smooth[i] << "," << euclidean_errors_smooth[i] << "," 
-         << normalized_euclidean_errors_no_smooth[i] << "," << normalized_euclidean_errors_smooth[i] << ","
-         << reset_frames[i] << "," << homo_status[i] << "\n";
-  }
-  file.close();
-  // 計算平均誤差
-  double avg_euclidean_no_smooth = 0.0, avg_euclidean_smooth = 0.0;
-  double avg_normalized_euclidean_no_smooth = 0.0, avg_normalized_euclidean_smooth = 0.0;
-  for (size_t i = 0; i < frames.size(); i++) {
-    avg_euclidean_no_smooth += euclidean_errors_no_smooth[i];
-    avg_euclidean_smooth += euclidean_errors_smooth[i];
-    avg_normalized_euclidean_no_smooth += normalized_euclidean_errors_no_smooth[i];
-    avg_normalized_euclidean_smooth += normalized_euclidean_errors_smooth[i];
-  }
-  avg_euclidean_no_smooth /= frames.size();
-  avg_euclidean_smooth /= frames.size();
-  avg_normalized_euclidean_no_smooth /= frames.size();
-  avg_normalized_euclidean_smooth /= frames.size();
-  std::cout << "=== Homography Euclidean Error Analysis for " << video_name << " ===" << std::endl;
-  std::cout << "Average Euclidean error (No Smooth): " << std::fixed << std::setprecision(6) << avg_euclidean_no_smooth << " px" << std::endl;
-  std::cout << "Average Euclidean error (Smooth): " << std::fixed << std::setprecision(6) << avg_euclidean_smooth << " px" << std::endl;
-  std::cout << "Average Normalized Euclidean error (No Smooth): " << std::fixed << std::setprecision(6) << avg_normalized_euclidean_no_smooth << std::endl;
-  std::cout << "Average Normalized Euclidean error (Smooth): " << std::fixed << std::setprecision(6) << avg_normalized_euclidean_smooth << std::endl;
-  std::cout << "CSV file saved: " << csv_file << std::endl;
-}
-
-// 計算歐幾里得距離誤差（四個角點平均）
-double calcHomographyEuclideanError(const cv::Mat& H1, const cv::Mat& H2, int w, int h) {
-    if (H1.empty() || H2.empty()) return -1.0;
-    std::vector<cv::Point2f> corners = {
-        cv::Point2f(0, 0),
-        cv::Point2f(w, 0),
-        cv::Point2f(0, h),
-        cv::Point2f(w, h)
-    };
-    std::vector<cv::Point2f> pts1, pts2;
-    cv::perspectiveTransform(corners, pts1, H1);
-    cv::perspectiveTransform(corners, pts2, H2);
-    double err = 0.0;
-    for (int i = 0; i < 4; ++i) {
-        double dx = pts1[i].x - pts2[i].x;
-        double dy = pts1[i].y - pts2[i].y;
-        err += std::sqrt(dx * dx + dy * dy);
-    }
-    return err / 4.0;
-}
-
 int main(int argc, char **argv)
 {
   // 新增: 追蹤特徵點座標範圍
@@ -510,26 +393,7 @@ int main(int argc, char **argv)
   }
 
   // ----- Start -----
-  // 只取一個檔案進行處理
-  std::vector<std::filesystem::directory_entry> input_files;
-  int count = 0;
-  int choosen = -1;
-  for (const auto& entry : std::filesystem::directory_iterator(input_dir)) {
-    if (count == choosen) {
-      input_files.push_back(entry);
-      break; // 只取第一個檔案
-    }
-    else if (choosen==-1)
-    {
-      input_files.push_back(entry);
-
-    }
-    count++;
-  }
-
-
-
-  for (const auto &file : input_files)
+  for (const auto &file : directory_iterator(input_dir))
   {
     // Get file path and name
     string eo_path, ir_path, save_path = output_dir;
@@ -553,7 +417,7 @@ int main(int argc, char **argv)
     int eo_w, eo_h, ir_w, ir_h, frame_rate;
     VideoCapture eo_cap, ir_cap;
     VideoWriter writer;
-    VideoWriter writer_fusion; // 恢復：只輸出融合圖的影片
+    VideoWriter writer_fusion; // 新增：只輸出融合圖的影片
     if (isVideo)
     {
       eo_cap.open(eo_path);
@@ -574,8 +438,8 @@ int main(int argc, char **argv)
       
       if (isOut)
       {
-        writer.open(save_path + "cutCam1.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
-        writer_fusion.open(save_path + "_fusion.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w, out_h));
+        writer.open(save_path + "_shadow.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+        // writer_fusion.open(save_path + "_fusion.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w, out_h));
       }
     }
     else
@@ -648,36 +512,6 @@ int main(int argc, char **argv)
     // 初始化平滑 homography 管理器
     SmoothHomographyManager homo_manager(smooth_max_translation_diff, smooth_max_rotation_diff, smooth_alpha);
     int fallback_count = 0; // 新增：連續 fallback 次數計數器
-    
-    // 新增：GT homography 相關變數
-    std::vector<int> error_frames;
-    std::vector<double> trans_errors_no_smooth;
-    std::vector<double> trans_errors_smooth;
-    std::vector<double> normalized_trans_errors_no_smooth;
-    std::vector<double> normalized_trans_errors_smooth;
-    std::vector<double> rot_errors_no_smooth;
-    std::vector<double> rot_errors_smooth;
-    std::vector<std::string> reset_frames; // 新增：記錄reset frame
-    std::vector<std::string> homo_status; // 新增：記錄homo狀態
-    std::string gt_homo_path = "/circ330/HomoLabels480360/Version3";
-    
-    // 從檔案路徑中提取影片名稱
-    std::string video_name = "";
-    if (isVideo) {
-      size_t pos = eo_path.find_last_of("/\\");
-      if (pos != std::string::npos) {
-        std::string filename = eo_path.substr(pos + 1);
-        pos = filename.find_last_of(".");
-        if (pos != std::string::npos) {
-          video_name = filename.substr(0, pos);
-        }
-      }
-      // 移除 "_EO" 後綴
-      pos = video_name.find("_EO");
-      if (pos != std::string::npos) {
-        video_name = video_name.substr(0, pos);
-      }
-    }
 
     while (1)
     {
@@ -701,20 +535,55 @@ int main(int argc, char **argv)
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
-        // resize（使用 cubic 插值）
+        // resize
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(320, 240), 0, 0, cv::INTER_LINEAR);
-        cv::resize(ir, ir_resized, cv::Size(320, 240), 0, 0, cv::INTER_LINEAR);
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
         // 轉灰階
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
-        // 只做一次model對齊
+        // 第一次model對齊
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M1;
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M1);
-        // ========== 一次RANSAC濾除outlier ==========
-        cv::Mat refined_H1 = M1.clone();
+        // 取得對齊後的重疊區域
+        std::vector<cv::Point2f> eo_corners = { {0,0}, {(float)eo_resized.cols,0}, {(float)eo_resized.cols,(float)eo_resized.rows}, {0,(float)eo_resized.rows} };
+        std::vector<cv::Point2f> eo_proj(4);
+        if (!M1.empty() && eo_pts.size() >= 4 && ir_pts.size() >= 4)
+          cv::perspectiveTransform(eo_corners, eo_proj, M1);
+        else
+          eo_proj = eo_corners;
+        // 計算重疊區域的邊界
+        float min_x=1e6, min_y=1e6, max_x=-1e6, max_y=-1e6;
+        for (const auto& pt : eo_proj) {
+          min_x = std::min(min_x, pt.x);
+          min_y = std::min(min_y, pt.y);
+          max_x = std::max(max_x, pt.x);
+          max_y = std::max(max_y, pt.y);
+        }
+        // 邊界加50px容錯，不能超出圖像範圍
+        int pad = 50;
+        int crop_x = std::max(0, (int)std::floor(min_x) - pad);
+        int crop_y = std::max(0, (int)std::floor(min_y) - pad);
+        int crop_w = std::min((int)std::ceil(max_x) + pad, eo_resized.cols) - crop_x;
+        int crop_h = std::min((int)std::ceil(max_y) + pad, eo_resized.rows) - crop_y;
+        if (min_x <= 0) crop_x = 0;
+        if (min_y <= 0) crop_y = 0;
+        if (max_x >= eo_resized.cols) crop_w = eo_resized.cols - crop_x;
+        if (max_y >= eo_resized.rows) crop_h = eo_resized.rows - crop_y;
+        // 第二次裁剪
+        cv::Mat eo_crop2 = eo_resized(cv::Rect(crop_x, crop_y, crop_w, crop_h)).clone();
+        cv::Mat eo_crop2_resized;
+        cv::resize(eo_crop2, eo_crop2_resized, cv::Size(out_w, out_h));
+        cv::Mat gray_eo2;
+        cv::cvtColor(eo_crop2_resized, gray_eo2, cv::COLOR_BGR2GRAY);
+        // 第二次model對齊
+        eo_pts.clear(); ir_pts.clear();
+        cv::Mat M2;
+        image_align->align(gray_eo2, gray_ir, eo_pts, ir_pts, M2);
+        // ========== 新增：RANSAC 濾除 outlier，提升精度 ==========
+        cv::Mat refined_H = M2.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
           std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
@@ -724,7 +593,7 @@ int main(int argc, char **argv)
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
-              refined_H1 = H;
+              refined_H = H;
               // 過濾 inlier 特徵點
               std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
               for (int i = 0; i < mask.rows; i++) {
@@ -739,84 +608,38 @@ int main(int argc, char **argv)
           }
         }
         // 用 refined homography 做後續處理
-        M1 = refined_H1.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H1.clone();
+        M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        // ========== 新增：圖片模式下組合顯示並儲存（不顯示特徵點） ==========
+        // 準備 temp_pair：左邊IR，右邊EO原圖經過homo變換
+        cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
+        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
         
-        // ========== 新增：讀取GT homography並計算誤差 ==========
-        // 從檔案路徑中提取圖片名稱
-        std::string img_name = "";
-        size_t pos = eo_path.find_last_of("/\\");
-        if (pos != std::string::npos) {
-          std::string filename = eo_path.substr(pos + 1);
-          pos = filename.find_last_of(".");
-          if (pos != std::string::npos) {
-            img_name = filename.substr(0, pos);
-          }
+        // EO裁切+resize後的圖片經過homography變換
+        cv::Mat eo_warped_cropped;
+        if (!M.empty() && cv::determinant(M) > 1e-6) {
+          cv::warpPerspective(eo_crop2_resized, eo_warped_cropped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        } else {
+          eo_warped_cropped = eo_crop2_resized.clone();
         }
-        // 移除 "_EO" 後綴
-        pos = img_name.find("_EO");
-        if (pos != std::string::npos) {
-          img_name = img_name.substr(0, pos);
-        }
-        
-        // 讀取GT homography
-        std::string gt_json_path = "/circ330/HomoLabels320240/Version3/IR_" + img_name + ".json";
-        cv::Mat gt_homo = readGTHomography("/circ330/HomoLabels320240/Version3", img_name);
-        
-        // 計算誤差（圖片大小固定為 320x240）
-        double euclidean_error = 0.0;
-        double normalized_euclidean_error = 0.0;
-        if (!gt_homo.empty() && !M1.empty()) {
-          euclidean_error = calcHomographyEuclideanError(M1, gt_homo, 320, 240);
-          double diagonal_length = sqrt(320 * 320 + 240 * 240);
-          normalized_euclidean_error = euclidean_error / diagonal_length;
-          std::cout << "  - GT Error: Euclidean=" << euclidean_error << "px, Normalized=" << normalized_euclidean_error << std::endl;
-        }
-        // 輸出到CSV檔案（新格式：圖片名稱, 大小, 有無cubic, 與GT計算歐幾里得距離誤差）
-        std::string csv_filename = "image_homo_errors.csv";
-        std::ofstream csv_file;
-        bool file_exists = std::filesystem::exists(csv_filename);
-        csv_file.open(csv_filename, std::ios::app);
-        // 如果檔案不存在，寫入標題行
-        if (!file_exists) {
-          csv_file << "Image_Name,Image_Size,Is_Cubic,Euclidean_Error\n";
-        }
-        // 寫入資料
-        std::string size_str = "320*240";
-        csv_file << img_name << "," << size_str << ",No," << euclidean_error << "\n";
-        csv_file.close();
-        // ========== 對齊輸出圖片（圖片大小固定為 320x240）==========
-        // 準備 temp_pair
-        cv::Mat temp_pair = cv::Mat::zeros(240, 320 * 2, CV_8UC3);
-        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, 320, 240)));
-        eo_resized.copyTo(temp_pair(cv::Rect(320, 0, 320, 240)));
-        if (eo_pts.size() > 0 && ir_pts.size() > 0) {
-          for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
-            cv::Point2i pt_ir = ir_pts[i];
-            cv::Point2i pt_eo = eo_pts[i];
-            pt_eo.x += 320;
-            if (pt_ir.x >= 0 && pt_ir.x < 320 && pt_ir.y >= 0 && pt_ir.y < 240 &&
-                pt_eo.x >= 320 && pt_eo.x < 320 * 2 && pt_eo.y >= 0 && pt_eo.y < 240) {
-              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1);
-              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1);
-              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1);
-            }
-          }
-        }
-        // 邊緣檢測和融合
-        cv::Mat edge = image_fusion->edge(gray_eo);
+        eo_warped_cropped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        // 邊緣檢測
+        cv::Mat edge = image_fusion->edge(gray_eo2);
+        // warp edge
         cv::Mat edge_warped = edge.clone();
-        if (!M1.empty() && cv::determinant(M1) > 1e-6) {
-          cv::warpPerspective(edge, edge_warped, M1, cv::Size(320, 240), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        if (!M.empty() && cv::determinant(M) > 1e-6) {
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
         }
+        // 融合
         cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
-        // 組合顯示 - 左側兩個區域顯示特徵點匹配，右側顯示融合結果（圖片大小固定為 320x240）
-        cv::Mat img_final = cv::Mat(240, 320 * 3, CV_8UC3);
-        temp_pair.copyTo(img_final(cv::Rect(0, 0, 320 * 2, 240)));
-        img_combined.copyTo(img_final(cv::Rect(320 * 2, 0, 320, 240)));
-        // 顯示結果
-        imshow("out", img_final);
+        // 組合顯示
+        cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
+        temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
+        img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
+        // 顯示
+        imshow("out", img);
         if (isOut) {
-          imwrite(save_path + "_320x240_cubic.jpg", img_final);
+          imwrite(save_path + ".jpg", img);
+          // imwrite(save_path + "_fusion.jpg", img_combined); // 新增：只輸出融合圖
         }
         int key = waitKey(0);
         if (key == 27)
@@ -831,26 +654,25 @@ int main(int argc, char **argv)
       // 幀數計數
       timer_base.start();
 
-      
       // 新程式碼：按照Python版本
       Mat img_ir, img_eo, gray_ir, gray_eo;
       
-      // Resize圖像，影片處理也使用 cubic 插值
+      // Resize圖像
       {
         timer_resize.start();
-        cv::resize(ir, img_ir, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
-        cv::resize(eo, img_eo, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
+        cv::resize(ir, img_ir, cv::Size(out_w, out_h));
+        cv::resize(eo, img_eo, cv::Size(out_w, out_h));
         timer_resize.stop();
       }
       
-      // 轉換為灰度圖像，與Python相同
+      // 轉換為灰度圖像
       {
         timer_gray.start();
         cv::cvtColor(img_ir, gray_ir, cv::COLOR_BGR2GRAY);
         cv::cvtColor(img_eo, gray_eo, cv::COLOR_BGR2GRAY);
         timer_gray.stop();
       }
-
+      
       // 每50幀計算一次特徵點
       if (cnt % compute_per_frame == 0) {
         eo_pts.clear(); ir_pts.clear();
@@ -872,19 +694,14 @@ int main(int argc, char **argv)
           vector<cv::Point2f> eo_pts_f, ir_pts_f;
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
-          
           cv::Mat mask;
           cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
-            bool accepted = false;
-            bool did_reset = false;
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
-              cv::Mat gt_homo = readGTHomographyForVideo(gt_homo_path + "/" + video_name + "_IR", cnt);
               if (homo_manager.getCurrentHomography().empty()) {
                 M = homo_manager.updateHomography(H);
-                fallback_count = 0;
-                accepted = true;
+                fallback_count = 0; // reset
                 cout << "  - Frame " << cnt << ": First homography computed" << endl;
               } else {
                 std::pair<double, double> diff = homo_manager.calculateHomographyDifference(
@@ -897,56 +714,20 @@ int main(int argc, char **argv)
                   fallback_count++;
                   cout << "    -> Difference too large, keeping previous homography (fallback_count=" << fallback_count << ")" << endl;
                   if (fallback_count >= 3) {
+                    // 強制接受這次的 homography 並初始化
                     cout << "    -> Fallback >= 3, force accept and reset!" << endl;
                     homo_manager = SmoothHomographyManager(smooth_max_translation_diff, smooth_max_rotation_diff, smooth_alpha);
-                    M = homo_manager.updateHomography(H);
+                    M = homo_manager.updateHomography(H); // 這次直接設為新的
                     fallback_count = 0;
-                    accepted = true;
                   } else {
                     M = homo_manager.getCurrentHomography();
-                    accepted = false;
                   }
                 } else {
                   cout << "    -> Difference acceptable, smoothly updating homography (alpha=" 
                        << smooth_alpha << ")" << endl;
                   M = homo_manager.updateHomography(H);
                   fallback_count = 0;
-                  accepted = true;
                 }
-              }
-              
-              // 誤差計算：計算平移和旋轉誤差
-              double euclidean_error_no_smooth = 0.0, euclidean_error_smooth = 0.0;
-              double normalized_euclidean_error_no_smooth = 0.0, normalized_euclidean_error_smooth = 0.0;
-              std::string status = "";
-              if (accepted) {
-                euclidean_error_no_smooth = calcHomographyEuclideanError(H, gt_homo, out_w, out_h);
-                euclidean_error_smooth = calcHomographyEuclideanError(M, gt_homo, out_w, out_h);
-                double diagonal_length = sqrt(out_w * out_w + out_h * out_h);
-                normalized_euclidean_error_no_smooth = euclidean_error_no_smooth / diagonal_length;
-                normalized_euclidean_error_smooth = euclidean_error_smooth / diagonal_length;
-                status = "Updated";
-              } else {
-                euclidean_error_no_smooth = calcHomographyEuclideanError(M, gt_homo, out_w, out_h);
-                euclidean_error_smooth = euclidean_error_no_smooth;
-                double diagonal_length = sqrt(out_w * out_w + out_h * out_h);
-                normalized_euclidean_error_no_smooth = euclidean_error_no_smooth / diagonal_length;
-                normalized_euclidean_error_smooth = euclidean_error_smooth / diagonal_length;
-                status = "Threshold_Exceeded";
-              }
-              if (!gt_homo.empty()) {
-                error_frames.push_back(cnt);
-                trans_errors_no_smooth.push_back(euclidean_error_no_smooth);
-                trans_errors_smooth.push_back(euclidean_error_smooth);
-                normalized_trans_errors_no_smooth.push_back(normalized_euclidean_error_no_smooth);
-                normalized_trans_errors_smooth.push_back(normalized_euclidean_error_smooth);
-                rot_errors_no_smooth.push_back(0.0); // 不再記錄旋轉誤差
-                rot_errors_smooth.push_back(0.0);
-                reset_frames.push_back(did_reset ? std::to_string(cnt) : "");
-                homo_status.push_back(status);
-                cout << "  - Frame " << cnt << ": GT Error - Euclidean(NoSmooth)=" << euclidean_error_no_smooth 
-                     << "px, Euclidean(Smooth)=" << euclidean_error_smooth << "px, Normalized(NoSmooth)=" << normalized_euclidean_error_no_smooth
-                     << ", Normalized(Smooth)=" << normalized_euclidean_error_smooth << (did_reset ? " [RESET]" : "") << endl;
               }
               // 過濾inlier特徵點
               std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
@@ -983,29 +764,44 @@ int main(int argc, char **argv)
           cout << "  - Frame " << cnt << ": Insufficient feature points, using previous" << endl;
         }
         timer_find_homo.stop();
-        // 只在這裡重畫特徵點配對圖像
-        // 確保 img_ir 和 img_eo 尺寸正確（使用 cubic 插值）
-        if (img_ir.size() != cv::Size(out_w, out_h)) {
-          cv::resize(img_ir, img_ir, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
-        }
-        if (img_eo.size() != cv::Size(out_w, out_h)) {
-          cv::resize(img_eo, img_eo, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
-        }
         
-        // 創建固定尺寸的配對圖像
+        // 在resize後的圖片上建立特徵點配對圖像
         temp_pair = Mat::zeros(out_h, out_w * 2, CV_8UC3);
         img_ir.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
-        img_eo.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        
+        // 對EO進行homography變換
+        cv::Mat eo_warped;
+        if (!M.empty() && cv::determinant(M) > 1e-6) {
+          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        } else {
+          eo_warped = img_eo.clone();
+        }
+        
+        // 新增：將eo_warped放大到與ir相同尺寸（而不是out_w x out_h）
+        cv::Mat eo_warped_fullsize;
+        cv::resize(eo_warped, eo_warped_fullsize, cv::Size(ir.cols, ir.rows));
+        
+        // 將放大後的eo_warped再resize回輸出尺寸放到temp_pair中間
+        cv::Mat eo_warped_resized;
+        cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h));
+        eo_warped_resized.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        
+        // 參考main0712.cpp的畫點劃線方式
         if (eo_pts.size() > 0 && ir_pts.size() > 0) {
           for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
             cv::Point2i pt_ir = ir_pts[i];
             cv::Point2i pt_eo = eo_pts[i];
-            pt_eo.x += out_w;
+            pt_eo.x += out_w; // EO特徵點在右側圖片，需要加上偏移
+            
+            // 邊界檢查，確保點在有效範圍內
             if (pt_ir.x >= 0 && pt_ir.x < out_w && pt_ir.y >= 0 && pt_ir.y < out_h &&
                 pt_eo.x >= out_w && pt_eo.x < out_w * 2 && pt_eo.y >= 0 && pt_eo.y < out_h) {
-              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1);
-              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1);
-              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1);
+              // 繪製特徵點（使用填充圓圈）
+              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1); // IR: 綠色
+              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1); // EO: 紅色
+              
+              // 繪製匹配線
+              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1); // 藍色線
             }
           }
         }
@@ -1016,102 +812,59 @@ int main(int argc, char **argv)
           M = cv::Mat::eye(3, 3, CV_64F);
         }
       }
-      // 其餘幀直接沿用上一次的M、特徵點、temp_pair
 
-      // 邊緣檢測和融合處理，與Python相同
+      // 邊緣檢測和融合
       Mat edge, img_combined;
-      
       {
         timer_edge.start();
         edge = image_fusion->edge(gray_eo);
         timer_edge.stop();
       }
-      
       // 將EO影像轉換到IR的座標系統，如果有有效的homography矩陣
       Mat edge_warped = edge.clone();
-      if (!M.empty() && cv::determinant(M) > 1e-6) // 檢查矩陣是否有效
-      {
+      if (!M.empty() && cv::determinant(M) > 1e-6) {
         timer_perspective.start();
         cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
         timer_perspective.stop();
       }
-      else
-      {
-        cout << "  - Using original edge image (no valid homography)" << endl;
-      }
-      
       {
         timer_fusion.start();
         img_combined = image_fusion->fusion(edge_warped, img_ir);
         timer_fusion.stop();
       }
-      
       timer_base.stop();
-      
       // 輸出影像，確保所有影像尺寸正確
       Mat img;
-      // 確保所有影像尺寸正確
       cv::Size target_size(out_w, out_h);
-      
-      // 檢查並調整 temp_pair 的尺寸（使用 cubic 插值）
       if (temp_pair.size() != cv::Size(out_w * 2, out_h)) {
-        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h), 0, 0, cv::INTER_LINEAR);
+        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h));
       }
-      
-      // 檢查並調整 img_combined 的尺寸（使用 cubic 插值）
       if (img_combined.size() != target_size) {
-        cv::resize(img_combined, img_combined, target_size, 0, 0, cv::INTER_LINEAR);
+        cv::resize(img_combined, img_combined, target_size);
       }
-      
-      // 創建固定尺寸的輸出影像
       img = cv::Mat(out_h, out_w * 3, CV_8UC3);
-      
-      // 確保 img_combined 是彩色的
-      cv::Mat img_combined_color;
-      if (img_combined.channels() == 1) {
-        cv::cvtColor(img_combined, img_combined_color, cv::COLOR_GRAY2BGR);
-      } else {
-        img_combined_color = img_combined.clone();
-      }
-      
-      // 複製影像到對應位置：左側特徵點匹配 + 右側融合圖
       temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
-      img_combined_color.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
-      
-      // 顯示處理結果
-      imshow("out", img);
-
-
-      if (isVideo)
-      {
+      img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
+      // 影片模式下直接寫入影片，不顯示GUI
+      if (isVideo) {
         if (isOut) {
           writer.write(img);
-          writer_fusion.write(img_combined_color); // 恢復：只寫融合圖
         }
-
         int key = waitKey(1);
         if (key == 27)
           return 0;
-          
-        for (int i = 0; i < frame_rate - 1; i++)
-        {
+        for (int i = 0; i < frame_rate - 1; i++) {
           Mat temp_ir;
           ir_cap.read(temp_ir);
         }
-      }
-      else
-      {
+      } else {
         if (isOut)
-          imwrite(save_path + "_cubic.jpg", img);
-
+          imwrite(save_path + ".jpg", img);
         int key = waitKey(0);
         if (key == 27)
           return 0;
-
         break;
       }
-      
-      // 增加幀數計數器
       cnt++;
     }
 
@@ -1130,16 +883,7 @@ int main(int argc, char **argv)
     if (isOut)
       writer.release();
     if (isOut)
-      writer_fusion.release(); // 恢復：釋放融合影片
-    
-    // 新增：儲存誤差圖表（僅影片模式）
-    /*
-    if (isVideo && !error_frames.empty()) {
-      saveErrorChart(error_frames, trans_errors_no_smooth, trans_errors_smooth, 
-                     normalized_trans_errors_no_smooth, normalized_trans_errors_smooth,
-                     reset_frames, homo_status, video_name);
-    }
-    */
+      writer_fusion.release(); // 新增：釋放融合影片
 
     // return 0;
   }

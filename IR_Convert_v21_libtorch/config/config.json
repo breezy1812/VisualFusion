@@ -1,5 +1,5 @@
 {
-    "input_dir": "/circ330/circ_video/Version3/",
+    "input_dir": "/circ330/circ_video/Version1",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
@@ -27,7 +27,7 @@
     "pred_width": 320,
     "pred_height": 240,
 
-    "fusion_shadow": false,
+    "fusion_shadow": true,
     "fusion_edge_border":2,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
@@ -45,7 +45,7 @@
 
     "smooth_max_translation_diff": 80.0,  
     "smooth_max_rotation_diff": 0.05,     
-    "smooth_alpha": 0.05,   
+    "smooth_alpha": 0.1,   
 
     "skip_frames":{
         "20231117_140552_523_IR": 95,
