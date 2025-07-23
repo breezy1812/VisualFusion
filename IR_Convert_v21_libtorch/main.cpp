@@ -352,10 +352,9 @@ int main(int argc, char **argv)
   int fusion_threshold_equalization_high = config["fusion_threshold_equalization_high"];
   int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
   // 新增：插值方式
-  // std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
-  // bool isUsingCubic = (fusion_interpolation == "cubic");
-  // 直接強制使用 linear
-  int interp = cv::INTER_LINEAR;
+  std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
+  int interp = (fusion_interpolation == "cubic") ? cv::INTER_CUBIC : cv::INTER_LINEAR;
+  bool use_border_constant = (fusion_interpolation == "cubic");
 
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
@@ -420,6 +419,35 @@ int main(int argc, char **argv)
     // Check file is video
     bool isVideo = is_video(eo_path);
 
+    // while 外部的 resize 只給輸出用
+    cv::Mat eo_resized_out, ir_resized_out;
+
+    if (!isVideo) {
+      Mat eo_tmp = imread(eo_path);
+      Mat ir_tmp = imread(ir_path);
+      if (isPictureCut) {
+        eo_tmp = cropImage(eo_tmp, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
+      }
+      cv::resize(eo_tmp, eo_resized_out, cv::Size(out_w, out_h));
+      cv::resize(ir_tmp, ir_resized_out, cv::Size(out_w, out_h));
+    }
+    // ====== [DEBUG] 第一次 resize (for test, 強制錯誤版本) ======
+    // 僅圖片模式才做第一次 resize
+    Mat eo_first_resized, ir_first_resized;
+    if (!isVideo) {
+      Mat eo_tmp = imread(eo_path);
+      Mat ir_tmp = imread(ir_path);
+      if (isPictureCut) {
+        eo_tmp = cropImage(eo_tmp, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
+      }
+      cv::resize(eo_tmp, eo_first_resized, cv::Size(out_w, out_h), 0, 0, interp);
+      cv::resize(ir_tmp, ir_first_resized, cv::Size(out_w, out_h), 0, 0, interp);
+      // Debug 輸出
+      std::cout << "[DEBUG] 第一次 resize (for test, 強制錯誤版本) eo sum: " << cv::sum(eo_first_resized) << std::endl;
+      std::cout << "[DEBUG] 第一次 resize (for test, 強制錯誤版本) ir sum: " << cv::sum(ir_first_resized) << std::endl;
+    }
+    // ====== [DEBUG] 第一次 resize (for test, 強制錯誤版本) ======
+
     // Get frame size, frame rate, and create capture/writer
     int eo_w, eo_h, ir_w, ir_h, frame_rate;
     VideoCapture eo_cap, ir_cap;
@@ -455,6 +483,14 @@ int main(int argc, char **argv)
       Mat ir = imread(ir_path);
       eo_w = eo.cols, eo_h = eo.rows;
       ir_w = ir.cols, ir_h = ir.rows;
+      // while 外部的 resize 只給輸出用
+      cv::Mat eo_resized_out, ir_resized_out;
+      if (isPictureCut) {
+        eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
+      }
+      cv::resize(eo, eo_resized_out, cv::Size(out_w, out_h));
+      cv::resize(ir, ir_resized_out, cv::Size(out_w, out_h));
+      // eo_resized_out, ir_resized_out 只給輸出 temp_pair 用，不會傳入 while 內部
     }
 
     // Create instance
@@ -522,10 +558,6 @@ int main(int argc, char **argv)
 
     while (1)
     {
-      // int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
-      // 直接強制使用 linear
-      int interp = cv::INTER_LINEAR;
-
       if (isVideo)
       {
         ir_cap.read(ir);
@@ -540,7 +572,7 @@ int main(int argc, char **argv)
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
-        // 第一次裁剪
+        // while 內部流程只用原始圖做 resize，不用外部的 eo_resized_out, ir_resized_out
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
@@ -552,47 +584,12 @@ int main(int argc, char **argv)
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
-        // 第一次model對齊
+        // 只做一次 model 對齊
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M1;
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M1);
-        // 取得對齊後的重疊區域
-        std::vector<cv::Point2f> eo_corners = { {0,0}, {(float)eo_resized.cols,0}, {(float)eo_resized.cols,(float)eo_resized.rows}, {0,(float)eo_resized.rows} };
-        std::vector<cv::Point2f> eo_proj(4);
-        if (!M1.empty() && eo_pts.size() >= 4 && ir_pts.size() >= 4)
-          cv::perspectiveTransform(eo_corners, eo_proj, M1);
-        else
-          eo_proj = eo_corners;
-        // 計算重疊區域的邊界
-        float min_x=1e6, min_y=1e6, max_x=-1e6, max_y=-1e6;
-        for (const auto& pt : eo_proj) {
-          min_x = std::min(min_x, pt.x);
-          min_y = std::min(min_y, pt.y);
-          max_x = std::max(max_x, pt.x);
-          max_y = std::max(max_y, pt.y);
-        }
-        // 邊界加50px容錯，不能超出圖像範圍
-        int pad = 50;
-        int crop_x = std::max(0, (int)std::floor(min_x) - pad);
-        int crop_y = std::max(0, (int)std::floor(min_y) - pad);
-        int crop_w = std::min((int)std::ceil(max_x) + pad, eo_resized.cols) - crop_x;
-        int crop_h = std::min((int)std::ceil(max_y) + pad, eo_resized.rows) - crop_y;
-        if (min_x <= 0) crop_x = 0;
-        if (min_y <= 0) crop_y = 0;
-        if (max_x >= eo_resized.cols) crop_w = eo_resized.cols - crop_x;
-        if (max_y >= eo_resized.rows) crop_h = eo_resized.rows - crop_y;
-        // 第二次裁剪
-        cv::Mat eo_crop2 = eo_resized(cv::Rect(crop_x, crop_y, crop_w, crop_h)).clone();
-        cv::Mat eo_crop2_resized;
-        cv::resize(eo_crop2, eo_crop2_resized, cv::Size(out_w, out_h), 0, 0, interp);
-        cv::Mat gray_eo2;
-        cv::cvtColor(eo_crop2_resized, gray_eo2, cv::COLOR_BGR2GRAY);
-        // 第二次model對齊
-        eo_pts.clear(); ir_pts.clear();
-        cv::Mat M2;
-        image_align->align(gray_eo2, gray_ir, eo_pts, ir_pts, M2);
-        // ========== 新增：RANSAC 濾除 outlier，提升精度 ==========
-        cv::Mat refined_H = M2.clone();
+        // RANSAC 濾除 outlier，提升精度
+        cv::Mat refined_H = M1.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
           std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
@@ -618,28 +615,35 @@ int main(int argc, char **argv)
         }
         // 用 refined homography 做後續處理
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
-        // ========== 新增：圖片模式下組合顯示並儲存（不顯示特徵點） ==========
-        // 準備 temp_pair：左邊IR，右邊EO原圖經過homo變換
+        // 準備 temp_pair：左邊IR，右邊EO經過homo變換
         cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
-        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
-        
-        // EO裁切+resize後的圖片經過homography變換
-        cv::Mat eo_warped_cropped;
+        ir_resized_out.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        // EO經過homography變換
+        cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(eo_crop2_resized, eo_warped_cropped, M, cv::Size(out_w, out_h), interp);
+          if (use_border_constant) {
+            cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
+          } else {
+            cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp);
+          }
         } else {
-          eo_warped_cropped = eo_crop2_resized.clone();
+          eo_warped = eo_resized.clone();
         }
-        eo_warped_cropped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        eo_warped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         // 邊緣檢測
-        cv::Mat edge = image_fusion->edge(gray_eo2);
+        cv::Mat edge = image_fusion->edge(gray_eo);
         // warp edge
         cv::Mat edge_warped = edge.clone();
         if (!M.empty() && cv::determinant(M) > 1e-6) {
           cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
         }
         // 融合
-        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
+        cv::Mat img_combined;
+        if (fusion_shadow) {
+          img_combined = image_fusion->fusion(edge_warped, ir_resized);
+        } else {
+          img_combined = ir_resized.clone();
+        }
         // 組合顯示
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -780,7 +784,11 @@ int main(int argc, char **argv)
         // 對EO進行homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
+          if (use_border_constant) {
+            cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
+          } else {
+            cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
+          }
         } else {
           eo_warped = img_eo.clone();
         }
@@ -831,13 +839,19 @@ int main(int argc, char **argv)
       // 將EO影像轉換到IR的座標系統，如果有有效的homography矩陣
       Mat edge_warped = edge.clone();
       if (!M.empty() && cv::determinant(M) > 1e-6) {
-        timer_perspective.start();
-        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
-        timer_perspective.stop();
+        if (use_border_constant) {
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
+        } else {
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
+        }
       }
       {
         timer_fusion.start();
-        img_combined = image_fusion->fusion(edge_warped, img_ir);
+        if (fusion_shadow) {
+          img_combined = image_fusion->fusion(edge_warped, img_ir);
+        } else {
+          img_combined = img_ir.clone();
+        }
         timer_fusion.stop();
       }
       timer_base.stop();
