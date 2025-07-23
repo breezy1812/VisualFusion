@@ -109,6 +109,8 @@ inline void init_config(nlohmann::json &config)
   config.emplace("smooth_alpha", 0.03);                 // 平滑係數 (0-1, 越小越平滑) - 降低係數
 
   config.emplace("skip_frames", nlohmann::json::object());
+
+  config.emplace("fusion_interpolation", "linear"); // 新增：插值方式 linear/cubic
 }
 
 cv::Mat cropImage(const cv::Mat& sourcePic, int x, int y, int w, int h) {
@@ -349,6 +351,11 @@ int main(int argc, char **argv)
   int fusion_threshold_equalization_low = config["fusion_threshold_equalization_low"];
   int fusion_threshold_equalization_high = config["fusion_threshold_equalization_high"];
   int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
+  // 新增：插值方式
+  // std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
+  // bool isUsingCubic = (fusion_interpolation == "cubic");
+  // 直接強制使用 linear
+  int interp = cv::INTER_LINEAR;
 
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
@@ -515,7 +522,9 @@ int main(int argc, char **argv)
 
     while (1)
     {
-
+      // int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
+      // 直接強制使用 linear
+      int interp = cv::INTER_LINEAR;
 
       if (isVideo)
       {
@@ -575,7 +584,7 @@ int main(int argc, char **argv)
         // 第二次裁剪
         cv::Mat eo_crop2 = eo_resized(cv::Rect(crop_x, crop_y, crop_w, crop_h)).clone();
         cv::Mat eo_crop2_resized;
-        cv::resize(eo_crop2, eo_crop2_resized, cv::Size(out_w, out_h));
+        cv::resize(eo_crop2, eo_crop2_resized, cv::Size(out_w, out_h), 0, 0, interp);
         cv::Mat gray_eo2;
         cv::cvtColor(eo_crop2_resized, gray_eo2, cv::COLOR_BGR2GRAY);
         // 第二次model對齊
@@ -617,7 +626,7 @@ int main(int argc, char **argv)
         // EO裁切+resize後的圖片經過homography變換
         cv::Mat eo_warped_cropped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(eo_crop2_resized, eo_warped_cropped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+          cv::warpPerspective(eo_crop2_resized, eo_warped_cropped, M, cv::Size(out_w, out_h), interp);
         } else {
           eo_warped_cropped = eo_crop2_resized.clone();
         }
@@ -627,7 +636,7 @@ int main(int argc, char **argv)
         // warp edge
         cv::Mat edge_warped = edge.clone();
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
         }
         // 融合
         cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
@@ -638,8 +647,7 @@ int main(int argc, char **argv)
         // 顯示
         imshow("out", img);
         if (isOut) {
-          imwrite(save_path + ".jpg", img);
-          // imwrite(save_path + "_fusion.jpg", img_combined); // 新增：只輸出融合圖
+          imwrite(save_path + ".jpg", img);//圖片輸出
         }
         int key = waitKey(0);
         if (key == 27)
@@ -660,8 +668,8 @@ int main(int argc, char **argv)
       // Resize圖像
       {
         timer_resize.start();
-        cv::resize(ir, img_ir, cv::Size(out_w, out_h));
-        cv::resize(eo, img_eo, cv::Size(out_w, out_h));
+        cv::resize(ir, img_ir, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(eo, img_eo, cv::Size(out_w, out_h), 0, 0, interp);
         timer_resize.stop();
       }
       
@@ -772,18 +780,18 @@ int main(int argc, char **argv)
         // 對EO進行homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
         } else {
           eo_warped = img_eo.clone();
         }
         
         // 新增：將eo_warped放大到與ir相同尺寸（而不是out_w x out_h）
         cv::Mat eo_warped_fullsize;
-        cv::resize(eo_warped, eo_warped_fullsize, cv::Size(ir.cols, ir.rows));
+        cv::resize(eo_warped, eo_warped_fullsize, cv::Size(ir.cols, ir.rows), 0, 0, interp);
         
         // 將放大後的eo_warped再resize回輸出尺寸放到temp_pair中間
         cv::Mat eo_warped_resized;
-        cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h));
+        cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h), 0, 0, interp);
         eo_warped_resized.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
         // 參考main0712.cpp的畫點劃線方式
@@ -824,7 +832,7 @@ int main(int argc, char **argv)
       Mat edge_warped = edge.clone();
       if (!M.empty() && cv::determinant(M) > 1e-6) {
         timer_perspective.start();
-        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0));
+        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
         timer_perspective.stop();
       }
       {
@@ -837,10 +845,10 @@ int main(int argc, char **argv)
       Mat img;
       cv::Size target_size(out_w, out_h);
       if (temp_pair.size() != cv::Size(out_w * 2, out_h)) {
-        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h));
+        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h), 0, 0, interp);
       }
       if (img_combined.size() != target_size) {
-        cv::resize(img_combined, img_combined, target_size);
+        cv::resize(img_combined, img_combined, target_size, 0, 0, interp);
       }
       img = cv::Mat(out_h, out_w * 3, CV_8UC3);
       temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -859,7 +867,7 @@ int main(int argc, char **argv)
         }
       } else {
         if (isOut)
-          imwrite(save_path + ".jpg", img);
+          imwrite(save_path + ".jpg", img); //影片輸出
         int key = waitKey(0);
         if (key == 27)
           return 0;
