@@ -1,5 +1,5 @@
 {
-    "input_dir": "/circ330/circ_video/Version1",
+    "input_dir": "/circ330/circ_video/Version3",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
@@ -46,7 +46,7 @@
 
     "smooth_max_translation_diff": 80.0,  
     "smooth_max_rotation_diff": 0.05,     
-    "smooth_alpha": 0.1,   
+    "smooth_alpha": 0.05,   
 
     "skip_frames":{
         "20231117_140552_523_IR": 95,

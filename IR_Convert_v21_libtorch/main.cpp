@@ -270,6 +270,56 @@ public:
     }
 };
 
+// GT homography 讀取函數
+cv::Mat readGTHomography(const std::string& gt_path, const std::string& img_name) {
+  std::string json_file = gt_path + "/IR_" + img_name + ".json";
+  
+  if (!std::filesystem::exists(json_file)) {
+    std::cout << "GT file not found: " << json_file << std::endl;
+    return cv::Mat();
+  }
+  
+  try {
+    std::ifstream file(json_file);
+    nlohmann::json j;
+    file >> j;
+    
+    cv::Mat H = cv::Mat::eye(3, 3, CV_64F);
+    auto h_array = j["H"];
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        H.at<double>(i, j) = h_array[i][j];
+      }
+    }
+    std::cout << "GT homography loaded from: " << json_file << std::endl;
+    return H;
+  } catch (const std::exception& e) {
+    std::cout << "Error reading GT homography from " << json_file << ": " << e.what() << std::endl;
+    return cv::Mat();
+  }
+}
+
+// 計算 homography 誤差函數
+double calcHomographyEuclideanError(const cv::Mat& H1, const cv::Mat& H2, int w, int h) {
+    if (H1.empty() || H2.empty()) return -1.0;
+    std::vector<cv::Point2f> corners = {
+        cv::Point2f(0, 0),
+        cv::Point2f(w, 0),
+        cv::Point2f(0, h),
+        cv::Point2f(w, h)
+    };
+    std::vector<cv::Point2f> pts1, pts2;
+    cv::perspectiveTransform(corners, pts1, H1);
+    cv::perspectiveTransform(corners, pts2, H2);
+    double err = 0.0;
+    for (int i = 0; i < 4; ++i) {
+        double dx = pts1[i].x - pts2[i].x;
+        double dy = pts1[i].y - pts2[i].y;
+        err += std::sqrt(dx * dx + dy * dy);
+    }
+    return err / 4.0;
+}
+
 int main(int argc, char **argv)
 {
   // 新增: 追蹤特徵點座標範圍
@@ -353,8 +403,8 @@ int main(int argc, char **argv)
   int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
   // 新增：插值方式
   std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
-  int interp = (fusion_interpolation == "cubic") ? cv::INTER_CUBIC : cv::INTER_LINEAR;
-  bool use_border_constant = (fusion_interpolation == "cubic");
+  bool isUsingCubic = (fusion_interpolation == "cubic");
+  int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
 
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
@@ -371,6 +421,9 @@ int main(int argc, char **argv)
   double smooth_max_translation_diff = config["smooth_max_translation_diff"];
   double smooth_max_rotation_diff = config["smooth_max_rotation_diff"];
   double smooth_alpha = config["smooth_alpha"];
+
+  // GT homography 路徑
+  std::string gt_homo_base_path = "/circ330/HomoLabels320240/Version3";
 
   // show config
   {
@@ -419,35 +472,6 @@ int main(int argc, char **argv)
     // Check file is video
     bool isVideo = is_video(eo_path);
 
-    // while 外部的 resize 只給輸出用
-    cv::Mat eo_resized_out, ir_resized_out;
-
-    if (!isVideo) {
-      Mat eo_tmp = imread(eo_path);
-      Mat ir_tmp = imread(ir_path);
-      if (isPictureCut) {
-        eo_tmp = cropImage(eo_tmp, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
-      }
-      cv::resize(eo_tmp, eo_resized_out, cv::Size(out_w, out_h));
-      cv::resize(ir_tmp, ir_resized_out, cv::Size(out_w, out_h));
-    }
-    // ====== [DEBUG] 第一次 resize (for test, 強制錯誤版本) ======
-    // 僅圖片模式才做第一次 resize
-    Mat eo_first_resized, ir_first_resized;
-    if (!isVideo) {
-      Mat eo_tmp = imread(eo_path);
-      Mat ir_tmp = imread(ir_path);
-      if (isPictureCut) {
-        eo_tmp = cropImage(eo_tmp, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
-      }
-      cv::resize(eo_tmp, eo_first_resized, cv::Size(out_w, out_h), 0, 0, interp);
-      cv::resize(ir_tmp, ir_first_resized, cv::Size(out_w, out_h), 0, 0, interp);
-      // Debug 輸出
-      std::cout << "[DEBUG] 第一次 resize (for test, 強制錯誤版本) eo sum: " << cv::sum(eo_first_resized) << std::endl;
-      std::cout << "[DEBUG] 第一次 resize (for test, 強制錯誤版本) ir sum: " << cv::sum(ir_first_resized) << std::endl;
-    }
-    // ====== [DEBUG] 第一次 resize (for test, 強制錯誤版本) ======
-
     // Get frame size, frame rate, and create capture/writer
     int eo_w, eo_h, ir_w, ir_h, frame_rate;
     VideoCapture eo_cap, ir_cap;
@@ -483,14 +507,6 @@ int main(int argc, char **argv)
       Mat ir = imread(ir_path);
       eo_w = eo.cols, eo_h = eo.rows;
       ir_w = ir.cols, ir_h = ir.rows;
-      // while 外部的 resize 只給輸出用
-      cv::Mat eo_resized_out, ir_resized_out;
-      if (isPictureCut) {
-        eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
-      }
-      cv::resize(eo, eo_resized_out, cv::Size(out_w, out_h));
-      cv::resize(ir, ir_resized_out, cv::Size(out_w, out_h));
-      // eo_resized_out, ir_resized_out 只給輸出 temp_pair 用，不會傳入 while 內部
     }
 
     // Create instance
@@ -558,6 +574,10 @@ int main(int argc, char **argv)
 
     while (1)
     {
+      // int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
+      // 直接強制使用 linear
+      int interp = cv::INTER_LINEAR;
+
       if (isVideo)
       {
         ir_cap.read(ir);
@@ -572,24 +592,25 @@ int main(int argc, char **argv)
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
-        // while 內部流程只用原始圖做 resize，不用外部的 eo_resized_out, ir_resized_out
+        // 圖片裁剪
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
         // resize
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
-        cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, interp);
         // 轉灰階
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
-        // 只做一次 model 對齊
+        // 單次model對齊
         eo_pts.clear(); ir_pts.clear();
-        cv::Mat M1;
-        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M1);
-        // RANSAC 濾除 outlier，提升精度
-        cv::Mat refined_H = M1.clone();
+        cv::Mat M_single;
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
+        
+        // ========== RANSAC 濾除 outlier，提升精度 ==========
+        cv::Mat refined_H = M_single.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
           std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
@@ -613,23 +634,23 @@ int main(int argc, char **argv)
             }
           }
         }
-        // 用 refined homography 做後續處理
+        // 使用 refined homography
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        
+        // ========== 圖片模式下組合顯示 ==========
         // 準備 temp_pair：左邊IR，右邊EO經過homo變換
         cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
-        ir_resized_out.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        
         // EO經過homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          if (use_border_constant) {
-            cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
-          } else {
-            cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp);
-          }
+          cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp);
         } else {
           eo_warped = eo_resized.clone();
         }
         eo_warped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
+        
         // 邊緣檢測
         cv::Mat edge = image_fusion->edge(gray_eo);
         // warp edge
@@ -638,12 +659,7 @@ int main(int argc, char **argv)
           cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
         }
         // 融合
-        cv::Mat img_combined;
-        if (fusion_shadow) {
-          img_combined = image_fusion->fusion(edge_warped, ir_resized);
-        } else {
-          img_combined = ir_resized.clone();
-        }
+        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
         // 組合顯示
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -653,6 +669,58 @@ int main(int argc, char **argv)
         if (isOut) {
           imwrite(save_path + ".jpg", img);//圖片輸出
         }
+        
+        // CSV 誤差分析：計算當前插值方法的 homography 誤差
+        std::cout << "\n=== Generating CSV for single image ===" << std::endl;
+        std::cout << "EO Path: " << eo_path << std::endl;
+        std::cout << "IR Path: " << ir_path << std::endl;
+        
+        // 提取圖片名稱
+        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos = img_name.find_last_of(".");
+        if (dot_pos != std::string::npos) {
+          img_name = img_name.substr(0, dot_pos);
+        }
+        size_t eo_pos = img_name.find("_EO");
+        if (eo_pos != std::string::npos) {
+          img_name = img_name.substr(0, eo_pos);
+        }
+        
+        // 讀取 GT homography
+        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
+        
+        if (!gt_homo.empty()) {
+          // 使用當前config指定的插值方法和已計算的homography
+          std::string current_interp_name = isUsingCubic ? "cubic" : "linear";
+          std::cout << "  Using " << current_interp_name << " interpolation (from config)..." << std::endl;
+          
+          // 直接使用已經計算出的 homography M
+          cv::Mat final_M = M.empty() ? cv::Mat::eye(3, 3, CV_64F) : M;
+          
+          // 計算與 GT 的誤差
+          double euclidean_error = calcHomographyEuclideanError(final_M, gt_homo, out_w, out_h);
+          
+          // 寫入 CSV
+          std::string csv_filename = "image_homo_errors.csv";
+          std::ofstream csv_file;
+          bool file_exists = std::filesystem::exists(csv_filename);
+          csv_file.open(csv_filename, std::ios::app);
+          
+          if (!file_exists) {
+            csv_file << "Image_Name,Image_Size,Is_Cubic,Euclidean_Error\n";
+          }
+          
+          std::string is_cubic = isUsingCubic ? "Yes" : "No";
+          std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
+          csv_file << img_name << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
+          csv_file.close();
+          
+          std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
+          std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
+        } else {
+          std::cout << "GT homography not found for image: " << img_name << std::endl;
+        }
+        
         int key = waitKey(0);
         if (key == 27)
           return 0;
@@ -784,11 +852,7 @@ int main(int argc, char **argv)
         // 對EO進行homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          if (use_border_constant) {
-            cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
-          } else {
-            cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
-          }
+          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
         } else {
           eo_warped = img_eo.clone();
         }
@@ -839,19 +903,13 @@ int main(int argc, char **argv)
       // 將EO影像轉換到IR的座標系統，如果有有效的homography矩陣
       Mat edge_warped = edge.clone();
       if (!M.empty() && cv::determinant(M) > 1e-6) {
-        if (use_border_constant) {
-          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp, cv::BORDER_CONSTANT, cv::Scalar(0));
-        } else {
-          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
-        }
+        timer_perspective.start();
+        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
+        timer_perspective.stop();
       }
       {
         timer_fusion.start();
-        if (fusion_shadow) {
-          img_combined = image_fusion->fusion(edge_warped, img_ir);
-        } else {
-          img_combined = img_ir.clone();
-        }
+        img_combined = image_fusion->fusion(edge_warped, img_ir);
         timer_fusion.stop();
       }
       timer_base.stop();
