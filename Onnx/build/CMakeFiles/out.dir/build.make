@@ -92,31 +92,16 @@ out_EXTERNAL_OBJECTS =
 
 out: CMakeFiles/out.dir/main.cpp.o
 out: CMakeFiles/out.dir/build.make
-out: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_videoio.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_dnn.so.4.2.0
-out: /opt/libtorch/lib/libtorch.so
-out: /opt/libtorch/lib/libc10.so
-out: /opt/libtorch/lib/libkineto.a
-out: /usr/lib/x86_64-linux-gnu/libcuda.so
-out: /usr/local/cuda/lib64/libnvrtc.so
-out: /usr/local/cuda/lib64/libnvToolsExt.so
-out: /usr/local/cuda/lib64/libcudart.so
-out: /opt/libtorch/lib/libc10_cuda.so
-out: /usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_features2d.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_flann.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_imgproc.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_core.so.4.2.0
-out: /opt/libtorch/lib/libc10_cuda.so
-out: /opt/libtorch/lib/libc10.so
-out: /usr/local/cuda/lib64/libcudart.so
-out: /usr/local/cuda/lib64/libnvToolsExt.so
-out: /usr/local/cuda/lib64/libcufft.so
-out: /usr/local/cuda/lib64/libcurand.so
-out: /usr/local/cuda/lib64/libcublas.so
-out: /usr/local/cuda/lib64/libcublasLt.so
+out: /usr/local/lib/libopencv_highgui.so.4.8.0
+out: /usr/local/lib/libopencv_calib3d.so.4.8.0
+out: /usr/local/lib/libopencv_videoio.so.4.8.0
+out: /usr/local/lib/libopencv_dnn.so.4.8.0
+out: /circ330/onnxruntime-linux-x64-1.20.1/lib/libonnxruntime.so
+out: /usr/local/lib/libopencv_imgcodecs.so.4.8.0
+out: /usr/local/lib/libopencv_features2d.so.4.8.0
+out: /usr/local/lib/libopencv_flann.so.4.8.0
+out: /usr/local/lib/libopencv_imgproc.so.4.8.0
+out: /usr/local/lib/libopencv_core.so.4.8.0
 out: CMakeFiles/out.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/circ330/forgithub/VisualFusion_libtorch/Onnx/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable out"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/out.dir/link.txt --verbose=$(VERBOSE)

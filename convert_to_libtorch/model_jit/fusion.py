@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from model.utils import CBR, DWConv, MLP
+from .utils import CBR, DWConv, MLP
 import torch.nn.functional as F
 
 class SemLA_Fusion(nn.Module):

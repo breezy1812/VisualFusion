@@ -26,7 +26,7 @@ include_directories(${PROJECT_SOURCE_DIR}/utils/include)
 include_directories(${PROJECT_SOURCE_DIR}/lib_image_fusion/include)
 
 
-add_executable(out test.cpp)
+add_executable(out main.cpp)
 target_link_libraries(out
   ${OpenCV_LIBS}
   ${TORCH_LIBRARIES}

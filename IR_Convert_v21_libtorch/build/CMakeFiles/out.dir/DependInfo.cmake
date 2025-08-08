@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/test.cpp" "CMakeFiles/out.dir/test.cpp.o" "gcc" "CMakeFiles/out.dir/test.cpp.o.d"
+  "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/main.cpp" "CMakeFiles/out.dir/main.cpp.o" "gcc" "CMakeFiles/out.dir/main.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

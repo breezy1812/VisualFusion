@@ -53,10 +53,9 @@ class SemLA_Reg(nn.Module):
         x3 = self.reg3(self.dwt(x2))
         feat_reg = self.pred_reg(x3)
 
-        bs2 = feat_reg.shape[0]
         # trace modify
-        # (feat_reg_vi, feat_reg_ir) = feat_reg.split(int(bs2 / 2))
-        (feat_reg_vi, feat_reg_ir) = feat_reg.split(torch.div(bs2, 2, rounding_mode='trunc'))
+        bs2 = feat_reg.shape[0] //2
+        (feat_reg_vi, feat_reg_ir) = feat_reg.split(bs2)
         h = feat_reg.shape[2]
         w = feat_reg.shape[3]
 

@@ -664,10 +664,12 @@ int main(int argc, char **argv)
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
         img_combined.copyTo(img(cv::Rect(out_w * 2, 0, out_w, out_h)));
-        // 顯示
-        imshow("out", img);
+        // 顯示 - 改為保存圖片而不是顯示
+        // imshow("out", img); // 註解掉以避免GUI錯誤
+        std::cout << "Generated fusion result: " << out_w * 3 << "x" << out_h << std::endl;
         if (isOut) {
           imwrite(save_path + ".jpg", img);//圖片輸出
+          std::cout << "Saved fusion result to: " << save_path + ".jpg" << std::endl;
         }
         
         // CSV 誤差分析：計算當前插值方法的 homography 誤差
@@ -721,9 +723,10 @@ int main(int argc, char **argv)
           std::cout << "GT homography not found for image: " << img_name << std::endl;
         }
         
-        int key = waitKey(0);
-        if (key == 27)
-          return 0;
+        // int key = waitKey(0); // 註解掉以避免GUI錯誤
+        // if (key == 27)
+        //   return 0;
+        std::cout << "Processing completed for single image." << std::endl;
         // 完成後直接break，避免進入影片專用流程
         break;
       }
@@ -930,9 +933,9 @@ int main(int argc, char **argv)
         if (isOut) {
           writer.write(img);
         }
-        int key = waitKey(1);
-        if (key == 27)
-          return 0;
+        // int key = waitKey(1); // 註解掉以避免GUI錯誤
+        // if (key == 27)
+        //   return 0;
         for (int i = 0; i < frame_rate - 1; i++) {
           Mat temp_ir;
           ir_cap.read(temp_ir);
@@ -940,9 +943,10 @@ int main(int argc, char **argv)
       } else {
         if (isOut)
           imwrite(save_path + ".jpg", img); //影片輸出
-        int key = waitKey(0);
-        if (key == 27)
-          return 0;
+        // int key = waitKey(0); // 註解掉以避免GUI錯誤
+        // if (key == 27)
+        //   return 0;
+        std::cout << "Frame processed and saved." << std::endl;
         break;
       }
       cnt++;

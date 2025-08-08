@@ -83,4 +83,5 @@ class SemLA(nn.Module):
 
         score = conf[b_ids, i_ids, j_ids]
 
-        return mkpts0, mkpts1, feat_sa_vi, feat_sa_ir, sa_ir, score
+        # return mkpts0, mkpts1, feat_sa_vi, feat_sa_ir, sa_ir, score
+        return mkpts0, mkpts1

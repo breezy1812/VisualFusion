@@ -69,32 +69,32 @@ include CMakeFiles/out.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/out.dir/flags.make
 
-CMakeFiles/out.dir/test.cpp.o: CMakeFiles/out.dir/flags.make
-CMakeFiles/out.dir/test.cpp.o: /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/test.cpp
-CMakeFiles/out.dir/test.cpp.o: CMakeFiles/out.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/out.dir/test.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/out.dir/test.cpp.o -MF CMakeFiles/out.dir/test.cpp.o.d -o CMakeFiles/out.dir/test.cpp.o -c /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/test.cpp
+CMakeFiles/out.dir/main.cpp.o: CMakeFiles/out.dir/flags.make
+CMakeFiles/out.dir/main.cpp.o: /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/main.cpp
+CMakeFiles/out.dir/main.cpp.o: CMakeFiles/out.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/out.dir/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/out.dir/main.cpp.o -MF CMakeFiles/out.dir/main.cpp.o.d -o CMakeFiles/out.dir/main.cpp.o -c /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/main.cpp
 
-CMakeFiles/out.dir/test.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/out.dir/test.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/test.cpp > CMakeFiles/out.dir/test.cpp.i
+CMakeFiles/out.dir/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/out.dir/main.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/main.cpp > CMakeFiles/out.dir/main.cpp.i
 
-CMakeFiles/out.dir/test.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/out.dir/test.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/test.cpp -o CMakeFiles/out.dir/test.cpp.s
+CMakeFiles/out.dir/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/out.dir/main.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/main.cpp -o CMakeFiles/out.dir/main.cpp.s
 
 # Object files for target out
 out_OBJECTS = \
-"CMakeFiles/out.dir/test.cpp.o"
+"CMakeFiles/out.dir/main.cpp.o"
 
 # External object files for target out
 out_EXTERNAL_OBJECTS =
 
-out: CMakeFiles/out.dir/test.cpp.o
+out: CMakeFiles/out.dir/main.cpp.o
 out: CMakeFiles/out.dir/build.make
-out: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_videoio.so.4.2.0
+out: /usr/local/lib/libopencv_highgui.so.4.8.0
+out: /usr/local/lib/libopencv_calib3d.so.4.8.0
+out: /usr/local/lib/libopencv_videoio.so.4.8.0
 out: /opt/libtorch/lib/libtorch.so
 out: /opt/libtorch/lib/libc10.so
 out: /opt/libtorch/lib/libkineto.a
@@ -103,11 +103,11 @@ out: /usr/local/cuda/lib64/libnvrtc.so
 out: /usr/local/cuda/lib64/libnvToolsExt.so
 out: /usr/local/cuda/lib64/libcudart.so
 out: /opt/libtorch/lib/libc10_cuda.so
-out: /usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_features2d.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_imgproc.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_flann.so.4.2.0
-out: /usr/lib/x86_64-linux-gnu/libopencv_core.so.4.2.0
+out: /usr/local/lib/libopencv_imgcodecs.so.4.8.0
+out: /usr/local/lib/libopencv_features2d.so.4.8.0
+out: /usr/local/lib/libopencv_imgproc.so.4.8.0
+out: /usr/local/lib/libopencv_flann.so.4.8.0
+out: /usr/local/lib/libopencv_core.so.4.8.0
 out: /opt/libtorch/lib/libc10_cuda.so
 out: /opt/libtorch/lib/libc10.so
 out: /usr/local/cuda/lib64/libcudart.so

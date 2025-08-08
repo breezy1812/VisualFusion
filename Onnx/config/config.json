@@ -1,29 +1,39 @@
 {
-    "input_dir": "/circ330/circ_video/Version1",
-    "output_dir": "/circ330/Homo/Homo/outputtest/",
+    "input_dir": "/circ330/circ_video/Version3",
+    "output_dir": "/circ330/forgithub/VisualFusion_libtorch/Onnx/output",
     "output": true,
 
-    "device": "cuda",
+    "device": "cpu",
     "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_480x360.onnx",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_opencv_compatible.onnx",
 
-    "cut_x": 0,
-    "cut_y": 0,
-    "cut_h": -1,
-    "cut_w": -1,
+    "VideoCut":true,
+    "Vcut_x": 870,
+    "Vcut_y": 235,
+    "Vcut_w": 2020,
+    "Vcut_h": 1680,
+    
+    "PictureCut":true,
+    "Pcut_x":220,
+    "Pcut_y":0,
+    "Pcut_w":1920,
+    "Pcut_h":1080,
 
-    "output_width": 480,
-    "output_height": 360,
 
-    "pred_width": 480,
-    "pred_height": 360,
 
-    "fusion_shadow": false,
-    "fusion_edge_border": 3,
+    "output_width": 320,
+    "output_height": 240,
+
+    "pred_width": 320,
+    "pred_height": 240,
+
+    "fusion_shadow": true,
+    "fusion_edge_border":2,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
+    "fusion_interpolation":"cubic",
 
     "perspective_check": true,
     "perspective_distance": 10,
@@ -33,6 +43,10 @@
     "align_distance_line": 10.0,
     "align_angle_mean": 10.0,
     "align_angle_sort": 0.7,
+
+    "smooth_max_translation_diff": 80.0,  
+    "smooth_max_rotation_diff": 0.05,     
+    "smooth_alpha": 0.05,   
 
     "skip_frames":{
         "20231117_140552_523_IR": 95,
