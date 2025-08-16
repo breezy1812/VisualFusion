@@ -248,3 +248,16 @@ Uses CMake with custom `gcc.sh` build script for convenience.
 - `lib_image_fusion/`: Core computer vision algorithms
 - `utils/`: Timing and utility functions
 - `nlohmann/`: JSON configuration parsing
+
+## 🙏 Acknowledgments
+
+- [OpenCV](https://opencv.org/) for computer vision primitives
+- [PyTorch](https://pytorch.org/) for deep learning framework
+- [ONNX](https://onnx.ai/) for model interoperability
+- Research community for advancement in image registration
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ for computer vision research and applications</sub>
+</div>
