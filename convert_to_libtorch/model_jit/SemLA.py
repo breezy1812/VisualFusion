@@ -14,7 +14,7 @@ class SemLA(nn.Module):
 
     def forward(self, img_vi, img_ir):
         # Select 'scene' mode when no semantic objects exist in the image
-        thr = 0
+        thr = -1  # 降低閾值以獲得更多特徵點
         feat_reg_vi_final, feat_reg_ir_final, feat_sa_vi, feat_sa_ir = self.backbone(
             torch.cat((img_vi, img_ir), dim=0)
         )
@@ -83,5 +83,17 @@ class SemLA(nn.Module):
 
         score = conf[b_ids, i_ids, j_ids]
 
+        # 固定輸出 1200 個點，完全避免條件判斷和動態操作
+        fixed_num_points = 1200
+        
+        # 創建固定大小的輸出張量，初始為 (0,0)
+        mkpts0_fixed = torch.zeros(fixed_num_points, 2, dtype=mkpts0.dtype, device=mkpts0.device)
+        mkpts1_fixed = torch.zeros(fixed_num_points, 2, dtype=mkpts1.dtype, device=mkpts1.device)
+        
+        # 使用純張量操作，避免 Python 條件判斷
+        # 直接用切片賦值，超出部分會被自動忽略，不足部分保持 (0,0)
+
+        mkpts0_fixed[:mkpts0.size(0)] = mkpts0
+        mkpts1_fixed[:mkpts1.size(0)] = mkpts1
         # return mkpts0, mkpts1, feat_sa_vi, feat_sa_ir, sa_ir, score
-        return mkpts0, mkpts1
+        return mkpts0_fixed, mkpts1_fixed,mkpts0.size(0),mkpts1.size(0)

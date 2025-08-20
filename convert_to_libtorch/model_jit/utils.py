@@ -224,7 +224,13 @@ class LinearAttention(nn.Module):
         Z = Z.to(dtype=self.fp)
         KV = KV.to(dtype=self.fp)
 
-        queried_values = torch.einsum("nlhd,nhdv,nlh->nlhv", Q, KV, Z) * v_length
+        # queried_values = torch.einsum("nlhd,nhdv,nlh->nlhv", Q, KV, Z) * v_length
+        
+        # Step 1: nlhd,nhdv -> nlhv
+        mid = torch.einsum("nlhd,nhdv->nlhv", Q, KV)
+        # Step 2: nlhv,nlh -> nlhv (broadcast multiply)
+        queried_values = mid * Z.unsqueeze(-1)
+        queried_values = queried_values * v_length
 
         return queried_values.contiguous()
 

@@ -1,0 +1,3 @@
+/circ330/forgithub/VisualFusion_libtorch/tensorRT/build/CMakeFiles/out.dir
+/circ330/forgithub/VisualFusion_libtorch/tensorRT/build/CMakeFiles/edit_cache.dir
+/circ330/forgithub/VisualFusion_libtorch/tensorRT/build/CMakeFiles/rebuild_cache.dir

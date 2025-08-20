@@ -1,0 +1,62 @@
+{
+    "input_dir": "/circ330/videodata/only",
+    "output_dir": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/output",
+    "output": true,
+
+    "device": "cpu",
+    "pred_mode": "fp32",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_1200kps.trt",
+
+    "VideoCut":true,
+    "Vcut_x": 870,
+    "Vcut_y": 235,
+    "Vcut_w": 2020,
+    "Vcut_h": 1680,
+    
+    "PictureCut":true,
+    "Pcut_x":220,
+    "Pcut_y":0,
+    "Pcut_w":1920,
+    "Pcut_h":1080,
+
+
+
+    "output_width": 320,
+    "output_height": 240,
+
+    "pred_width": 320,
+    "pred_height": 240,
+
+    "fusion_shadow": true,
+    "fusion_edge_border":2,
+    "fusion_threshold_equalization": 128,
+    "fusion_threshold_equalization_low": 72,
+    "fusion_threshold_equalization_high": 192,
+    "fusion_threshold_equalization_zero": 64,
+    "fusion_interpolation":"cubic",
+
+    "perspective_check": true,
+    "perspective_distance": 10,
+    "perspective_accuracy": 0.85,
+
+    "align_distance_last": 15.0,
+    "align_distance_line": 10.0,
+    "align_angle_mean": 10.0,
+    "align_angle_sort": 0.7,
+
+    "smooth_max_translation_diff": 80.0,  
+    "smooth_max_rotation_diff": 0.05,     
+    "smooth_alpha": 0.05,   
+
+    "skip_frames":{
+        "20231117_140552_523_IR": 95,
+        "20231117_140617_461_IR": 68,
+        "20231117_140723_990_IR": 72,
+        "20231117_140746_894_IR": 68,
+        "20231117_140758_655_IR": 68,
+        "20231117_140815_118_IR": 67.5,
+        "20231117_140857_164_IR": 66,
+        "20231117_140917_210_IR": 68,
+        "20231117_140934_116_IR": 66
+    }
+}

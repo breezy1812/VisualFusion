@@ -1,5 +1,5 @@
 {
-    "input_dir": "/circ330/circ_video/Version3",
+    "input_dir": "/circ330/videodata/Version3",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
