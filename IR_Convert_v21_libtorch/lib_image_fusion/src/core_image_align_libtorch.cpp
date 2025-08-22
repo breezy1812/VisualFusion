@@ -1,16 +1,3 @@
-/*
- * core_super_glue.cpp
- *
- *  Created on: Feb 6, 2024
- *      Author: arthurho
- *
- *  Modified on: Feb 23, 2024
- *      Author: HongKai
- *
- *  Modified on: May 14, 2024
- *      Author: HongKai
- */
-
 #include <core_image_align_libtorch.h>
 #include "util_timer.h"
 
@@ -99,14 +86,13 @@ namespace core
     // get mkpts from the model output
     torch::Tensor eo_mkpts = pred_[0].toTensor().to(torch::kFloat32); // 確保輸出是FP32
     torch::Tensor ir_mkpts = pred_[1].toTensor().to(torch::kFloat32);
+    int leng=pred_[2].toInt(); // 獲取特徵點數量
 
     // clean up eo_pts and ir_pts
     eo_pts.clear();
     ir_pts.clear();
 
-    // MODIFIED: 改善座標轉換，避免精度損失
-    // convert mkpts to cv::Point2i with better precision handling
-    for (int i = 0; i < eo_mkpts.size(0); i++)
+    for (int i = 0; i <leng; i++)
     {
       // 使用round而非直接轉換，提高精度
       float eo_x = eo_mkpts[i][0].item<float>();
@@ -117,7 +103,11 @@ namespace core
       eo_pts.push_back(cv::Point2i(static_cast<int>(std::round(eo_x)), static_cast<int>(std::round(eo_y))));
       ir_pts.push_back(cv::Point2i(static_cast<int>(std::round(ir_x)), static_cast<int>(std::round(ir_y))));
     }
-    
+    // std::cout <<"leng="<<leng<<"  - eo_pts coordinates:" << std::endl;
+    // for (size_t i = 0; i < leng; ++i) {
+    //   std::cout << "    [" << i << "]: (" << eo_pts[i].x << ", " << eo_pts[i].y << ")" << std::endl;
+    // }
+
     // DEBUG: 輸出特徵點數量
     std::cout << "  - Model extracted " << eo_pts.size() << " feature point pairs" << std::endl;
   }
@@ -128,22 +118,6 @@ namespace core
     // predict keypoints
     pred(eo, ir, eo_pts, ir_pts);
 
-    // MODIFIED: 簡化特徵點過濾，移除過度複雜的全局和局部過濾
-    // 原始複雜過濾邏輯註解掉，採用Python風格的直接使用所有特徵點
-    
-    /*
-    // 原始複雜過濾代碼保留作為註解：
-    // keypoints length
-    int len = eo_pts.size();
-
-    // get small window size
-    int small_window_height = param_.small_window_height;
-    int small_window_width = param_.small_window_width;
-
-    // ... 原有的全局和局部過濾邏輯 ...
-    */
-    
-    // 新代碼：直接使用模型輸出的特徵點，與Python版本一致
     // 只進行基本的座標縮放和偏移調整
     if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0)
     {

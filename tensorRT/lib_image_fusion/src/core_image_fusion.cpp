@@ -264,6 +264,14 @@ namespace core
       eo_3ch = eo.clone();
     }
     
+    // 處理 shadow，與原始code一致
+    if (param_.do_shadow)
+    {
+      cv::Mat shadow;
+      cv::dilate(eo, shadow, param_.sdStruct); // 使用邊緣圖像進行膨脹
+      cv::cvtColor(shadow, shadow, cv::COLOR_GRAY2BGR); // 轉為3通道
+      cv::subtract(ir_3ch, shadow, ir_3ch); // 先從ir_3ch減去shadow
+    }
     // 直接相加，與Python相同
     cv::add(ir_3ch, eo_3ch, out);
     

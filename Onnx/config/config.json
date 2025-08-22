@@ -1,5 +1,5 @@
 {
-    "input_dir": "/circ330/videodata/only",
+    "input_dir": "/circ330/videodata/Version3",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/Onnx/output",
     "output": true,
 

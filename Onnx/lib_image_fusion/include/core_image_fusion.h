@@ -28,7 +28,7 @@ public:
 
   struct Param {
     int edge_border = 1;
-    bool do_shadow = false;
+    bool do_shadow = true;
     
     int threshold_equalization = 128;
     int threshold_equalization_low  = 0;
