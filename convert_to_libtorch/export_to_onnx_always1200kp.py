@@ -4,7 +4,8 @@ import os
 from model_jit.SemLA import SemLA
 
 # 使用CPU來避免CUDA相關問題，並提高兼容性
-device = torch.device("cpu")
+# device = torch.device("cpu")
+device = torch.device("cuda")
 fpMode = torch.float32
 
 print("正在載入模型...")
@@ -29,7 +30,7 @@ torch_input_2 = torch.randn(1, 1, height, width).to(device)
 output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel"
 os.makedirs(output_dir, exist_ok=True)
 
-output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fixed1200pts.onnx"
+output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fixed1200pts_cuda.onnx"
 
 print(f"開始轉換ONNX模型...")
 print(f"輸出路徑: {output_path}")

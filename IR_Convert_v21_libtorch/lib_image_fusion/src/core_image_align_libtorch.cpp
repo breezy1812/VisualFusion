@@ -1,5 +1,10 @@
 #include <core_image_align_libtorch.h>
 #include "util_timer.h"
+#include <fstream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <experimental/filesystem>
 
 namespace core
 {
@@ -20,6 +25,8 @@ namespace core
 
     if (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0)
       net.to(torch::kHalf);
+
+    printf("Model initialization completed\n");
 
     // if (param_.device.compare("cuda") == 0)
     //   warm_up();
@@ -79,8 +86,15 @@ namespace core
       ir_tensor = ir_tensor.to(torch::kHalf);
     }
 
+    // 計時 - 模型推論開始
+    auto model_inference_start = std::chrono::high_resolution_clock::now();
+
     // run the model
     torch::IValue pred = net.forward({eo_tensor, ir_tensor});
+    
+    // 計時 - 模型推論結束
+    auto model_inference_end = std::chrono::high_resolution_clock::now();
+    double model_inference_time = std::chrono::duration_cast<std::chrono::microseconds>(model_inference_end - model_inference_start).count() / 1000000.0; // 轉換為秒
     torch::jit::Stack pred_ = pred.toTuple()->elements();
 
     // get mkpts from the model output
@@ -103,10 +117,11 @@ namespace core
       eo_pts.push_back(cv::Point2i(static_cast<int>(std::round(eo_x)), static_cast<int>(std::round(eo_y))));
       ir_pts.push_back(cv::Point2i(static_cast<int>(std::round(ir_x)), static_cast<int>(std::round(ir_y))));
     }
-    // std::cout <<"leng="<<leng<<"  - eo_pts coordinates:" << std::endl;
-    // for (size_t i = 0; i < leng; ++i) {
-    //   std::cout << "    [" << i << "]: (" << eo_pts[i].x << ", " << eo_pts[i].y << ")" << std::endl;
-    // }
+    
+    // 寫入CSV檔案 - 只記錄模型推論時間
+    writeTimingToCSV("Model_Inference", model_inference_time);
+    
+    printf("Model inference time: %.6f s\n", model_inference_time);
 
     // DEBUG: 輸出特徵點數量
     std::cout << "  - Model extracted " << eo_pts.size() << " feature point pairs" << std::endl;
@@ -135,5 +150,37 @@ namespace core
     
     // 輸出最終特徵點數量
     std::cout << "  - Final feature points after coordinate adjustment: " << eo_pts.size() << std::endl;
+  }
+
+  // 寫入計時資料到CSV檔案
+  void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms)
+  {
+    std::string csv_filename = "./timing_log.csv";
+    bool file_exists = std::experimental::filesystem::exists(csv_filename);
+    
+    std::ofstream csv_file(csv_filename, std::ios::app);
+    
+    if (!file_exists) {
+      // 寫入CSV標頭
+      csv_file << "Timestamp,Operation,Time_s,Device,Mode\n";
+    }
+    
+    // 獲取當前時間戳
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    
+    std::stringstream timestamp;
+    timestamp << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
+    timestamp << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    
+    // 寫入資料
+    csv_file << timestamp.str() << "," 
+             << operation << "," 
+             << std::fixed << std::setprecision(6) << time_ms << ","
+             << param_.device << ","
+             << param_.mode << "\n";
+    
+    csv_file.close();
   }
 } /* namespace core */

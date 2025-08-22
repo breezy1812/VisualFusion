@@ -1,5 +1,10 @@
 # VisualFusion LibTorch
-
+TODO: update bellow things
+!!!!!new!!!!!!
+cudnn=8
+onnxruntime=1.18.0
+tensorrt=8.6.1
+cuda=12
 🔥 **Real-Time EO-IR Image Alignment and Fusion System**
 
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)

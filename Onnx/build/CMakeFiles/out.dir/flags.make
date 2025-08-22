@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -D_GLIBCXX_USE_CXX11_ABI=1
 
-CXX_INCLUDES = -I/circ330/forgithub/VisualFusion_libtorch/Onnx/nlohmann -I/circ330/forgithub/VisualFusion_libtorch/Onnx/utils/include -I/circ330/forgithub/VisualFusion_libtorch/Onnx/lib_image_fusion/include -I/circ330/onnxruntime-linux-x64-1.20.1/include -isystem /usr/include/opencv4
+CXX_INCLUDES = -I/circ330/forgithub/VisualFusion_libtorch/Onnx/nlohmann -I/circ330/forgithub/VisualFusion_libtorch/Onnx/utils/include -I/circ330/forgithub/VisualFusion_libtorch/Onnx/lib_image_fusion/include -I/circ330/onnxruntime-linux-x64-gpu-1.18.0/include -isystem /usr/include/opencv4
 
 CXX_FLAGS = 
 

@@ -379,11 +379,11 @@ CMakeFiles/out.dir/main.cpp.o: \
  /usr/include/c++/11/experimental/bits/fs_dir.h \
  /usr/include/c++/11/experimental/bits/fs_ops.h \
  /circ330/forgithub/VisualFusion_libtorch/Onnx/lib_image_fusion/src/core_image_align_onnx.cpp \
- /circ330/onnxruntime-linux-x64-1.20.1/include/onnxruntime_cxx_api.h \
- /circ330/onnxruntime-linux-x64-1.20.1/include/onnxruntime_c_api.h \
+ /circ330/onnxruntime-linux-x64-gpu-1.18.0/include/onnxruntime_cxx_api.h \
+ /circ330/onnxruntime-linux-x64-gpu-1.18.0/include/onnxruntime_c_api.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h \
- /circ330/onnxruntime-linux-x64-1.20.1/include/onnxruntime_float16.h \
- /circ330/onnxruntime-linux-x64-1.20.1/include/onnxruntime_cxx_inline.h \
+ /circ330/onnxruntime-linux-x64-gpu-1.18.0/include/onnxruntime_float16.h \
+ /circ330/onnxruntime-linux-x64-gpu-1.18.0/include/onnxruntime_cxx_inline.h \
  /usr/include/c++/11/iterator /usr/include/c++/11/bits/stream_iterator.h \
  /circ330/forgithub/VisualFusion_libtorch/Onnx/utils/include/util_timer.h \
  /circ330/forgithub/VisualFusion_libtorch/Onnx/utils/src/util_timer.cpp \

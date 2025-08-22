@@ -1,0 +1,34 @@
+Timestamp,Operation,Time_s,Device,Mode
+2025-08-22 16:55:53.122,Model_Inference,0.484844,cpu,fp32
+2025-08-22 16:55:53.868,Model_Inference,0.541336,cpu,fp32
+2025-08-22 16:55:54.421,Model_Inference,0.357474,cpu,fp32
+2025-08-22 16:55:55.008,Model_Inference,0.387144,cpu,fp32
+2025-08-22 16:55:55.574,Model_Inference,0.364305,cpu,fp32
+2025-08-22 16:55:56.128,Model_Inference,0.357473,cpu,fp32
+2025-08-22 16:55:56.882,Model_Inference,0.552033,cpu,fp32
+2025-08-22 16:55:57.489,Model_Inference,0.398207,cpu,fp32
+2025-08-22 16:55:58.216,Model_Inference,0.525155,cpu,fp32
+2025-08-22 16:55:58.778,Model_Inference,0.362852,cpu,fp32
+2025-08-22 16:55:59.345,Model_Inference,0.362371,cpu,fp32
+2025-08-22 16:55:59.930,Model_Inference,0.385672,cpu,fp32
+2025-08-22 16:56:00.491,Model_Inference,0.364540,cpu,fp32
+2025-08-22 16:56:01.080,Model_Inference,0.388662,cpu,fp32
+2025-08-22 16:56:01.631,Model_Inference,0.354020,cpu,fp32
+2025-08-22 16:56:02.217,Model_Inference,0.384099,cpu,fp32
+2025-08-22 16:56:02.775,Model_Inference,0.357439,cpu,fp32
+2025-08-22 16:56:03.404,Model_Inference,0.423359,cpu,fp32
+2025-08-22 16:56:03.978,Model_Inference,0.371011,cpu,fp32
+2025-08-22 16:56:04.537,Model_Inference,0.364310,cpu,fp32
+2025-08-22 16:56:05.101,Model_Inference,0.363100,cpu,fp32
+2025-08-22 16:56:05.661,Model_Inference,0.361816,cpu,fp32
+2025-08-22 16:56:06.226,Model_Inference,0.365418,cpu,fp32
+2025-08-22 16:56:06.802,Model_Inference,0.377380,cpu,fp32
+2025-08-22 16:56:07.379,Model_Inference,0.379569,cpu,fp32
+2025-08-22 16:56:07.945,Model_Inference,0.366662,cpu,fp32
+2025-08-22 16:56:08.508,Model_Inference,0.366947,cpu,fp32
+2025-08-22 16:56:09.076,Model_Inference,0.365772,cpu,fp32
+2025-08-22 16:56:09.631,Model_Inference,0.358767,cpu,fp32
+2025-08-22 16:56:10.402,Model_Inference,0.572269,cpu,fp32
+2025-08-22 16:56:11.036,Model_Inference,0.429803,cpu,fp32
+2025-08-22 16:56:11.602,Model_Inference,0.364732,cpu,fp32
+平均時間: 0.3976 秒

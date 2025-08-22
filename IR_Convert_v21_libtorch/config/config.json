@@ -1,11 +1,11 @@
 {
-    "input_dir": "/circ330/videodata/only",
+    "input_dir": "/circ330/videodata/Version3",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
     "device": "cuda",
-    "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cuda.zip",
+    "pred_mode": "fp16",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cuda_fp16.zip",
 
     "VideoCut":true,
     "Vcut_x": 870,

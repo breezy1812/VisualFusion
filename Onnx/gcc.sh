@@ -1,2 +1,3 @@
-rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
+
+source ./setup_env.sh && rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
 

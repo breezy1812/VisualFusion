@@ -1,0 +1,33 @@
+Timestamp,Operation,Time_s,Device,Mode
+2025-08-22 17:00:47.745,Model_Inference,0.190358,cuda,fp16
+2025-08-22 17:00:48.174,Model_Inference,0.203832,cuda,fp16
+2025-08-22 17:00:48.606,Model_Inference,0.188262,cuda,fp16
+2025-08-22 17:00:49.029,Model_Inference,0.191581,cuda,fp16
+2025-08-22 17:00:49.430,Model_Inference,0.186949,cuda,fp16
+2025-08-22 17:00:49.838,Model_Inference,0.186947,cuda,fp16
+2025-08-22 17:00:50.258,Model_Inference,0.188461,cuda,fp16
+2025-08-22 17:00:50.671,Model_Inference,0.189273,cuda,fp16
+2025-08-22 17:00:51.081,Model_Inference,0.190913,cuda,fp16
+2025-08-22 17:00:51.493,Model_Inference,0.186696,cuda,fp16
+2025-08-22 17:00:51.909,Model_Inference,0.188086,cuda,fp16
+2025-08-22 17:00:52.317,Model_Inference,0.188324,cuda,fp16
+2025-08-22 17:00:52.746,Model_Inference,0.196652,cuda,fp16
+2025-08-22 17:00:53.160,Model_Inference,0.188509,cuda,fp16
+2025-08-22 17:00:53.561,Model_Inference,0.185626,cuda,fp16
+2025-08-22 17:00:53.966,Model_Inference,0.188345,cuda,fp16
+2025-08-22 17:00:54.381,Model_Inference,0.187633,cuda,fp16
+2025-08-22 17:00:54.801,Model_Inference,0.201747,cuda,fp16
+2025-08-22 17:00:55.200,Model_Inference,0.187966,cuda,fp16
+2025-08-22 17:00:55.605,Model_Inference,0.187131,cuda,fp16
+2025-08-22 17:00:56.014,Model_Inference,0.189086,cuda,fp16
+2025-08-22 17:00:56.429,Model_Inference,0.188098,cuda,fp16
+2025-08-22 17:00:56.857,Model_Inference,0.202080,cuda,fp16
+2025-08-22 17:00:57.272,Model_Inference,0.192156,cuda,fp16
+2025-08-22 17:00:57.701,Model_Inference,0.189284,cuda,fp16
+2025-08-22 17:00:58.111,Model_Inference,0.188398,cuda,fp16
+2025-08-22 17:00:58.530,Model_Inference,0.186650,cuda,fp16
+2025-08-22 17:00:58.931,Model_Inference,0.186683,cuda,fp16
+2025-08-22 17:00:59.341,Model_Inference,0.188232,cuda,fp16
+2025-08-22 17:00:59.755,Model_Inference,0.187798,cuda,fp16
+2025-08-22 17:01:00.170,Model_Inference,0.188684,cuda,fp16
+# 平均時間: 0.1901

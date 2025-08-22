@@ -151,6 +151,9 @@ namespace core
     // prediction
     void pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts);
 
+    // timing CSV writer
+    void writeTimingToCSV(const std::string& operation, double time_ms);
+
     // linear equation
     std::vector<float> line_equation(cv::Point2f &pt1, cv::Point2f &pt2);
 

@@ -1,0 +1,33 @@
+Timestamp,Operation,Time_s,Device,Mode
+2025-08-22 16:50:39.734,Model_Inference,0.181024,cuda,fp32
+2025-08-22 16:50:40.134,Model_Inference,0.185751,cuda,fp32
+2025-08-22 16:50:40.527,Model_Inference,0.178362,cuda,fp32
+2025-08-22 16:50:40.937,Model_Inference,0.192893,cuda,fp32
+2025-08-22 16:50:41.324,Model_Inference,0.178698,cuda,fp32
+2025-08-22 16:50:41.735,Model_Inference,0.197309,cuda,fp32
+2025-08-22 16:50:42.143,Model_Inference,0.177961,cuda,fp32
+2025-08-22 16:50:42.553,Model_Inference,0.191453,cuda,fp32
+2025-08-22 16:50:42.947,Model_Inference,0.180615,cuda,fp32
+2025-08-22 16:50:43.356,Model_Inference,0.188749,cuda,fp32
+2025-08-22 16:50:43.753,Model_Inference,0.181181,cuda,fp32
+2025-08-22 16:50:44.159,Model_Inference,0.189671,cuda,fp32
+2025-08-22 16:50:44.551,Model_Inference,0.181666,cuda,fp32
+2025-08-22 16:50:44.951,Model_Inference,0.193689,cuda,fp32
+2025-08-22 16:50:45.349,Model_Inference,0.192570,cuda,fp32
+2025-08-22 16:50:45.758,Model_Inference,0.190257,cuda,fp32
+2025-08-22 16:50:46.170,Model_Inference,0.189006,cuda,fp32
+2025-08-22 16:50:46.566,Model_Inference,0.187717,cuda,fp32
+2025-08-22 16:50:46.956,Model_Inference,0.183250,cuda,fp32
+2025-08-22 16:50:47.364,Model_Inference,0.188482,cuda,fp32
+2025-08-22 16:50:47.767,Model_Inference,0.181014,cuda,fp32
+2025-08-22 16:50:48.186,Model_Inference,0.193952,cuda,fp32
+2025-08-22 16:50:48.585,Model_Inference,0.181345,cuda,fp32
+2025-08-22 16:50:48.997,Model_Inference,0.191738,cuda,fp32
+2025-08-22 16:50:49.387,Model_Inference,0.178818,cuda,fp32
+2025-08-22 16:50:49.791,Model_Inference,0.193321,cuda,fp32
+2025-08-22 16:50:50.191,Model_Inference,0.181187,cuda,fp32
+2025-08-22 16:50:50.594,Model_Inference,0.191292,cuda,fp32
+2025-08-22 16:50:50.987,Model_Inference,0.180573,cuda,fp32
+2025-08-22 16:50:51.388,Model_Inference,0.179709,cuda,fp32
+2025-08-22 16:50:51.789,Model_Inference,0.185021,cuda,fp32
+# 平均執行時間: 0.1860 秒

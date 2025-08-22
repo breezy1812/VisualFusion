@@ -96,7 +96,7 @@ out: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.5.4d
 out: /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.5.4d
 out: /usr/lib/x86_64-linux-gnu/libopencv_videoio.so.4.5.4d
 out: /usr/lib/x86_64-linux-gnu/libopencv_dnn.so.4.5.4d
-out: /circ330/onnxruntime-linux-x64-1.20.1/lib/libonnxruntime.so
+out: /circ330/onnxruntime-linux-x64-gpu-1.18.0/lib/libonnxruntime.so
 out: /usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.5.4d
 out: /usr/lib/x86_64-linux-gnu/libopencv_features2d.so.4.5.4d
 out: /usr/lib/x86_64-linux-gnu/libopencv_flann.so.4.5.4d
