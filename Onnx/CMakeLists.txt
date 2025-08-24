@@ -4,8 +4,8 @@ project(out)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(OpenCV_DIR "/usr/include/opencv4")
 
-# Add ONNX Runtime support (GPU version)
-set(ONNXRUNTIME_ROOT_PATH "/circ330/onnxruntime-linux-x64-gpu-1.18.0")
+# Add ONNX Runtime support (GPU version 1.16.3)
+set(ONNXRUNTIME_ROOT_PATH "/circ330/onnxruntime-linux-x64-gpu-1.16.3")
 set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda")
 
 list(APPEND CMAKE_LIBRARY_PATH "${CUDA_TOOLKIT_ROOT_DIR}/lib64")

@@ -5,6 +5,8 @@
 #include <numeric>
 #include <algorithm>
 #include <cstdint>
+#include <chrono>
+#include <iomanip>
 
 // TensorRT Logger
 class Logger : public nvinfer1::ILogger {
@@ -26,6 +28,10 @@ private:
     nvinfer1::ICudaEngine* engine_ = nullptr;
     nvinfer1::IExecutionContext* context_ = nullptr;
     cudaStream_t stream_ = nullptr;
+    
+    // CSV logging for inference time
+    std::ofstream csv_file_;
+    int frame_counter_ = 0;
 
     // Helper to load engine from file
     bool loadEngine(const std::string& engine_path) {
@@ -63,8 +69,19 @@ private:
 
 public:
     // Constructor
-    ImageAlignTensorRTImpl(const Param& param) : ImageAlignTensorRT(param), param_(param) {
+    ImageAlignTensorRTImpl(const Param& param) : ImageAlignTensorRT(param), param_(param), frame_counter_(0) {
         std::cout << "debug: Initializing ImageAlignTensorRT..." << std::endl;
+        
+        // 初始化 CSV 文件
+        csv_file_.open("tensorrt_inference_times.csv", std::ios::app);
+        if (csv_file_.is_open()) {
+            // 檢查文件是否為空，如果是則添加標頭
+            csv_file_.seekp(0, std::ios::end);
+            if (csv_file_.tellp() == 0) {
+                csv_file_ << "Frame,Inference_Time_Seconds,Features_Count" << std::endl;
+            }
+        }
+        
         if (!loadEngine(param_.engine_path)) {
             throw std::runtime_error("Failed to load TensorRT engine.");
         }
@@ -83,6 +100,9 @@ public:
     // Destructor
     ~ImageAlignTensorRTImpl() {
         std::cout << "debug: Releasing ImageAlignTensorRT resources..." << std::endl;
+        if (csv_file_.is_open()) {
+            csv_file_.close();
+        }
         if (stream_) cudaStreamDestroy(stream_);
         if (context_) context_->destroy();
         if (engine_) engine_->destroy();
@@ -170,8 +190,24 @@ public:
         // 2. Run Inference
         int valid_points_count = 0;
         std::cout << "debug: [pred] Before runInference. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << std::endl;
+        
+        // 開始計時
+        auto inference_start = std::chrono::high_resolution_clock::now();
         bool success = runInference(eo_data, ir_data, eo_mkpts, ir_mkpts, valid_points_count);
+        // 結束計時
+        auto inference_end = std::chrono::high_resolution_clock::now();
+        auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
+        double inference_time_seconds = inference_duration.count() / 1000000.0;
+        
         std::cout << "debug: [pred] After runInference. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << ", valid_points_count: " << valid_points_count << std::endl;
+        std::cout << "Inference time: " << inference_time_seconds << " seconds" << std::endl;
+        
+        // 記錄到 CSV
+        frame_counter_++;
+        if (csv_file_.is_open()) {
+            csv_file_ << frame_counter_ << "," << std::fixed << std::setprecision(6) << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
+            csv_file_.flush();
+        }
 
         if (!success) {
             std::cerr << "debug: ERROR: Inference failed." << std::endl;

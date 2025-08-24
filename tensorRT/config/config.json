@@ -3,9 +3,9 @@
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/output",
     "output": true,
 
-    "device": "cpu",
+    "device": "cuda",
     "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_1200kps.trt",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_1200kps_onlyCuda.engine",
 
     "VideoCut":true,
     "Vcut_x": 870,

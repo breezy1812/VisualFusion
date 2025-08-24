@@ -95,29 +95,25 @@ public:
             
             bool use_cuda = false;
             if (param_.device == "cuda") {
-                try {
-                    // CUDA provider options - 優化設定以減少 memcpy
-                    OrtCUDAProviderOptions cuda_options{};
-                    cuda_options.device_id = 0;                    // Use first GPU
-                    cuda_options.arena_extend_strategy = 0;        // 不擴展記憶體池
-                    cuda_options.gpu_mem_limit = 0;                // 無限制，使用所有可用記憶體
-                    cuda_options.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchHeuristic; // 使用啟發式演算法，速度快
-                    cuda_options.do_copy_in_default_stream = 1;    // 在預設串流中複製，減少同步開銷
-                    cuda_options.has_user_compute_stream = 0;      // 不使用用戶串流
-                    cuda_options.default_memory_arena_cfg = nullptr;
-                    
-                    session_options_.AppendExecutionProvider_CUDA(cuda_options);
-                    
-                    // 針對混合 CPU-GPU 執行進行優化
-                    session_options_.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-                    
-                    use_cuda = true;
-                    std::cout << "CUDA execution provider successfully added (optimized for mixed CPU-GPU)" << std::endl;
-                } catch (const std::exception& cuda_e) {
-                    std::cerr << "Warning: CUDA execution provider failed: " << cuda_e.what() << std::endl;
-                    std::cerr << "Falling back to CPU execution provider" << std::endl;
-                    use_cuda = false;
-                }
+                std::cout << "Attempting to add CUDA execution provider..." << std::endl;
+                
+                // CUDA provider options - 優化設定以減少 memcpy
+                OrtCUDAProviderOptions cuda_options{};
+                cuda_options.device_id = 0;                    // Use first GPU
+                cuda_options.arena_extend_strategy = 0;        // 不擴展記憶體池
+                cuda_options.gpu_mem_limit = 0;                // 無限制，使用所有可用記憶體
+                cuda_options.cudnn_conv_algo_search = OrtCudnnConvAlgoSearchHeuristic; // 使用啟發式演算法，速度快
+                cuda_options.do_copy_in_default_stream = 1;    // 在預設串流中複製，減少同步開銷
+                cuda_options.has_user_compute_stream = 0;      // 不使用用戶串流
+                cuda_options.default_memory_arena_cfg = nullptr;
+                
+                session_options_.AppendExecutionProvider_CUDA(cuda_options);
+                
+                // 針對混合 CPU-GPU 執行進行優化
+                session_options_.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+                
+                use_cuda = true;
+                std::cout << "CUDA execution provider successfully added" << std::endl;
             } else {
                 std::cout << "Using CPU execution provider as requested" << std::endl;
             }
@@ -252,7 +248,7 @@ public:
         // Log inference time to CSV
         inference_count_++;
         if (csv_file_.is_open()) {
-            csv_file_ << inference_count_ << "," << inference_time_seconds << "," << len << std::endl;
+            csv_file_ << inference_count_ << "," << inference_time_seconds << ",  " << len << std::endl;
             csv_file_.flush();  // Ensure immediate write to file
         }
     }

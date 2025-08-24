@@ -1,11 +1,11 @@
 {
-    "input_dir": "/circ330/videodata/Version3",
+    "input_dir": "/circ330/videodata/only",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/Onnx/output",
     "output": true,
 
-    "device": "cpu",
+    "device": "cuda",
     "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fixed1200pts.onnx",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fp32_cuda.onnx",
 
     "VideoCut":true,
     "Vcut_x": 870,

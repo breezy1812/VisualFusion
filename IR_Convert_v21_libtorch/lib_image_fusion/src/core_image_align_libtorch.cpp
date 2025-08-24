@@ -119,7 +119,7 @@ namespace core
     }
     
     // 寫入CSV檔案 - 只記錄模型推論時間
-    writeTimingToCSV("Model_Inference", model_inference_time);
+    writeTimingToCSV("Model_Inference", model_inference_time,leng);
     
     printf("Model inference time: %.6f s\n", model_inference_time);
 
@@ -153,7 +153,7 @@ namespace core
   }
 
   // 寫入計時資料到CSV檔案
-  void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms)
+  void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms,int leng)
   {
     std::string csv_filename = "./timing_log.csv";
     bool file_exists = std::experimental::filesystem::exists(csv_filename);
@@ -178,8 +178,8 @@ namespace core
     csv_file << timestamp.str() << "," 
              << operation << "," 
              << std::fixed << std::setprecision(6) << time_ms << ","
-             << param_.device << ","
-             << param_.mode << "\n";
+             << param_.mode <<",   "
+             << leng << "\n";
     
     csv_file.close();
   }

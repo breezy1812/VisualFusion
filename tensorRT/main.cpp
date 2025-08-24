@@ -20,7 +20,7 @@
 
 using namespace cv;
 using namespace std;
-using namespace filesystem;
+using namespace std::filesystem;
 using json = nlohmann::json;
 
 // show error message
@@ -205,7 +205,9 @@ public:
             return true;
         }
         
-        auto [trans_diff, rot_diff] = calculateHomographyDifference(previous_homo, new_homo);
+        auto diff = calculateHomographyDifference(previous_homo, new_homo);
+        double trans_diff = diff.first;
+        double rot_diff = diff.second;
         
         // 如果差異太大，不更新
         if (trans_diff > max_translation_diff || rot_diff > max_rotation_diff) {
@@ -749,7 +751,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 10.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {

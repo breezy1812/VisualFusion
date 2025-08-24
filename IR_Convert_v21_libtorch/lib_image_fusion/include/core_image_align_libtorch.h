@@ -121,7 +121,7 @@ namespace core
 
       Param &set_bias(int x, int y)
       {
-        bias_x = x;
+         bias_x = x;
         bias_y = y;
         return *this;
       }
@@ -152,7 +152,8 @@ namespace core
     void pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts);
 
     // timing CSV writer
-    void writeTimingToCSV(const std::string& operation, double time_ms);
+    // void writeTimingToCSV(const std::string& operation, double time_ms);
+    void writeTimingToCSV(const std::string& operation, double time_ms,int leng);
 
     // linear equation
     std::vector<float> line_equation(cv::Point2f &pt1, cv::Point2f &pt2);
