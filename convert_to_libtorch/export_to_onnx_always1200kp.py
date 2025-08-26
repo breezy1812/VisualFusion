@@ -2,6 +2,7 @@ import torch
 import os
 
 from model_jit.SemLA import SemLA
+# only to fp17 need switch to opset 19
 
 # 使用CPU來避免CUDA相關問題，並提高兼容性
 # device = torch.device("cpu")
@@ -22,15 +23,10 @@ print(f"建立輸入張量，尺寸: {height}x{width}")
 torch_input_1 = torch.randn(1, 1, height, width).to(device)
 torch_input_2 = torch.randn(1, 1, height, width).to(device)
 
-# if fpMode == torch.float16:
-#     torch_input_1 = torch_input_1.half()
-#     torch_input_2 = torch_input_2.half()
-
-# 確保輸出目錄存在
 output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel"
 os.makedirs(output_dir, exist_ok=True)
 
-output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fixed1200pts_cuda.onnx"
+output_path = f"{output_dir}/SemLA_onnx_opset17_fixed1200pts_cuda.onnx"
 
 print(f"開始轉換ONNX模型...")
 print(f"輸出路徑: {output_path}")
@@ -40,7 +36,7 @@ torch.onnx.export(
     (torch_input_1, torch_input_2),
     output_path,
     verbose=False,  # 減少輸出
-    opset_version=12,  # 使用支援einsum的版本
+    opset_version=17,  # 使用支援einsum的版本
     input_names=["vi_img", "ir_img"],
     output_names=["mkpt0", "mkpt1",'leng1','leng2'],  # 固定輸出
     # 移除dynamic_axes，使用固定的輸出尺寸 [1200, 2]

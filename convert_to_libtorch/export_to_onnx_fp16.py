@@ -32,7 +32,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 # 先導出FP32 ONNX模型
 fp32_output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fp32_temp.onnx"
-fp16_output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fp16_{device}.onnx"
+fp16_output_path = f"{output_dir}/zETOfp16op12_fp16_{device}.onnx"
 
 print(f"步驟1: 轉換為FP32 ONNX模型...")
 print(f"臨時路徑: {fp32_output_path}")

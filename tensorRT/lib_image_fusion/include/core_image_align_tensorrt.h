@@ -21,6 +21,9 @@ public:
         std::string engine_path;
         Param& set_size(int iw, int ih, int ow, int oh) {
             input_w = iw; input_h = ih; output_w = ow; output_h = oh;
+            // 自動計算縮放參數，與LibTorch版本保持一致
+            out_width_scale = ow / (float)iw;
+            out_height_scale = oh / (float)ih;
             return *this;
         }
         Param& set_scale_and_bias(float scale_w, float scale_h, float bx, float by) {

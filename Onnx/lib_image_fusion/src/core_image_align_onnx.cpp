@@ -229,18 +229,18 @@ public:
         eo_mkpts.clear();
         ir_mkpts.clear();
 
-        // push keypoints to eo_mkpts and ir_mkpts
+        // push keypoints to eo_mkpts and ir_mkpts - 不進行縮放，與LibTorch版本一致
         // int len = pred[0].GetTensorTypeAndShapeInfo().GetShape()[0];
         int len = leng1;
         for (int i = 0, pt = 0; i < len; i++, pt += 2) {
-            // Scale points from model resolution to original image resolution
-            float eo_x = eo_res[pt] * param_.out_width_scale + param_.bias_x;
-            float eo_y = eo_res[pt + 1] * param_.out_height_scale + param_.bias_y;
-            float ir_x = ir_res[pt] * param_.out_width_scale + param_.bias_x;
-            float ir_y = ir_res[pt + 1] * param_.out_height_scale + param_.bias_y;
+            // 直接使用原始座標，不進行縮放（縮放將在align函數中處理）
+            int eo_x = (int)eo_res[pt];
+            int eo_y = (int)eo_res[pt + 1];
+            int ir_x = (int)ir_res[pt];
+            int ir_y = (int)ir_res[pt + 1];
             
-            eo_mkpts.push_back(cv::Point2i((int)eo_x, (int)eo_y));
-            ir_mkpts.push_back(cv::Point2i((int)ir_x, (int)ir_y));
+            eo_mkpts.push_back(cv::Point2i(eo_x, eo_y));
+            ir_mkpts.push_back(cv::Point2i(ir_x, ir_y));
         }
         
         std::cout << "Extracted " << len << " feature point pairs" << std::endl;
@@ -258,55 +258,26 @@ public:
         pred_cpu(eo, ir, eo_mkpts, ir_mkpts);
     }
 
-    // align with last H
+    // align with last H - 與LibTorch版本保持一致
     void align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H) {
         // predict keypoints
         pred(eo, ir, eo_pts, ir_pts);
 
-        std::vector<cv::Point2i> q_diff;
-        std::vector<std::vector<int>> q_idx;
-
-        std::vector<int> filter_idx;
-        std::vector<float> v_line, h_line;
-
-        // Calculate homography if we have enough points
-        if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
-            // Convert to Point2f for homography calculation
-            std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
-            for (const auto& pt : eo_pts) {
-                eo_pts_f.emplace_back(pt.x, pt.y);
+        // 進行特徵點縮放和偏移調整，與LibTorch版本保持一致
+        if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0) {
+            for (cv::Point2i &pt : eo_pts) {
+                pt.x = pt.x * param_.out_width_scale + param_.bias_x;
+                pt.y = pt.y * param_.out_height_scale + param_.bias_y;
             }
-            for (const auto& pt : ir_pts) {
-                ir_pts_f.emplace_back(pt.x, pt.y);
+            for (cv::Point2i &pt : ir_pts) {
+                pt.x = pt.x * param_.out_width_scale + param_.bias_x;
+                pt.y = pt.y * param_.out_height_scale + param_.bias_y;
             }
-            
-            // Calculate homography using RANSAC
-            cv::Mat mask;
-            H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC,  8.0, mask, 800, 0.98);
-            
-            if (!H.empty() && cv::determinant(H) > 1e-6) {
-                std::cout << "Successfully computed homography matrix" << std::endl;
-                
-                // Filter points based on homography
-                std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
-                for (size_t i = 0; i < eo_pts.size(); i++) {
-                    if (i < mask.rows && mask.at<uchar>(i) == 1) {
-                        filtered_eo_pts.push_back(eo_pts[i]);
-                        filtered_ir_pts.push_back(ir_pts[i]);
-                    }
-                }
-                eo_pts = filtered_eo_pts;
-                ir_pts = filtered_ir_pts;
-                
-                std::cout << "Final feature points after homography filtering: " << eo_pts.size() << std::endl;
-            } else {
-                std::cout << "Failed to compute valid homography matrix" << std::endl;
-                H = cv::Mat::eye(3, 3, CV_64F); // Identity matrix as fallback
-            }
-        } else {
-            std::cout << "Insufficient points for homography calculation (" << eo_pts.size() << " points)" << std::endl;
-            H = cv::Mat::eye(3, 3, CV_64F); // Identity matrix as fallback
         }
+        
+        // 返回單位矩陣，讓main.cpp處理homography計算（與LibTorch版本一致）
+        H = cv::Mat::eye(3, 3, CV_64F);
+        std::cout << "Feature point extraction complete. Found " << eo_pts.size() << " points." << std::endl;
     }
 
     bool align(const cv::Mat& eo, const cv::Mat& ir,

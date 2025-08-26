@@ -28,8 +28,8 @@ namespace core
 
     printf("Model initialization completed\n");
 
-    // if (param_.device.compare("cuda") == 0)
-    //   warm_up();
+    if (param_.device.compare("cuda") == 0)
+      warm_up();
   }
 
   // warm up
@@ -41,7 +41,7 @@ namespace core
     cv::Mat ir = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 255;
 
     const auto t0 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 10; i++)
     {
       cv::Mat H;
       std::vector<cv::Point2i> eo_mkpts, ir_mkpts;

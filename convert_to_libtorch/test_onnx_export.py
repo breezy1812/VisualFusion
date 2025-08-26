@@ -4,7 +4,7 @@ import numpy as np
 import onnxruntime as ort
 
 # output_path = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_opencv_compatible.onnx"
-output_path = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fixed1200pts.onnx"
+output_path = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/zETOfp16op12_fp16_cuda.onnx"
 onnx_model = onnx.load(output_path)
 
 # 範例圖片路徑

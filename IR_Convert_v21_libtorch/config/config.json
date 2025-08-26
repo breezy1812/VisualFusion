@@ -3,9 +3,9 @@
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
     "output": true,
 
-    "device": "cpu",
+    "device": "cuda",
     "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cpu.zip",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cuda.zip",
 
     "VideoCut":true,
     "Vcut_x": 870,

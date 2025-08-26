@@ -25,8 +25,8 @@ def create_stable_mixed_precision_model():
     print("=" * 60)
     
     # 檔案路徑
-    fp32_file = './SemLA_onnx_320x240_fp32_cuda.onnx'
-    fp16_file = './SemLA_onnx_320x240_fp16_cuda.onnx'
+    fp32_file = '/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fp32_cuda.onnx'
+    fp16_file = '/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/zopset17_fp16.onnx'
     
     if not os.path.exists(fp32_file):
         print(f"❌ 找不到 FP32 檔案: {fp32_file}")

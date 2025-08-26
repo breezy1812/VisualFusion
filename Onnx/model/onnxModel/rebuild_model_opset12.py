@@ -15,7 +15,7 @@ def rebuild_model_with_opset12():
     print("🔧 完全重建模型 - 強制 opset 12")
     print("=" * 60)
     
-    fp16_file = './SemLA_onnx_320x240_fp16_cuda.onnx'
+    fp16_file = './fp16.onnx'
     output_file = './SemLA_onnx_320x240_fp16_opset12.onnx'
     
     if not os.path.exists(fp16_file):
@@ -87,7 +87,7 @@ def rebuild_model_with_opset12():
         
         # 強制設置opset 12
         opset_imports = [
-            helper.make_opsetid("", 12)  # 主要opset設為12
+            helper.make_opsetid("", 17)  # 主要opset設為12
         ]
         
         print("📦 重建模型...")

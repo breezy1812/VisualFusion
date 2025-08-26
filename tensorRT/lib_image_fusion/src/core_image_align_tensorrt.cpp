@@ -121,43 +121,22 @@ public:
             return;
         }
 
-        std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
-        for(const auto& p : eo_pts) eo_pts_f.push_back(cv::Point2f(p.x, p.y));
-        for(const auto& p : ir_pts) ir_pts_f.push_back(cv::Point2f(p.x, p.y));
-
-        cv::Mat mask;
-        std::cout << "debug: [align] Attempting to find homography with RANSAC using " << eo_pts_f.size() << " points." << std::endl;
-        H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 2000, 0.995);
-
-        // Fallback: If RANSAC fails, try again with all points using least-squares method.
-        if (H.empty()) {
-            std::cout << "debug: [align] RANSAC failed. Retrying with simple least-squares (using all points)." << std::endl;
-            H = cv::findHomography(eo_pts_f, ir_pts_f, 0); // method = 0 for least-squares
-        }
-
-        if (H.empty() || cv::determinant(H) < 1e-6) {
-            std::cout << "debug: Homography computation failed or result is degenerate even after fallback." << std::endl;
-            H = cv::Mat::eye(3, 3, CV_64F);
-            return;
-        }
-
-        // Filter points using the mask from RANSAC, only if RANSAC was successful
-        if (!mask.empty()) {
-            std::vector<cv::Point2i> inlier_eo_pts, inlier_ir_pts;
-            int inlier_count = 0;
-            for (int i = 0; i < mask.rows; ++i) {
-                if (mask.at<uchar>(i)) {
-                    inlier_eo_pts.push_back(eo_pts[i]);
-                    inlier_ir_pts.push_back(ir_pts[i]);
-                    inlier_count++;
-                }
+        // 添加特徵點縮放邏輯，與LibTorch版本保持一致
+        if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0) {
+            for (cv::Point2i &pt : eo_pts) {
+                pt.x = pt.x * param_.out_width_scale + param_.bias_x;
+                pt.y = pt.y * param_.out_height_scale + param_.bias_y;
             }
-            eo_pts = inlier_eo_pts;
-            ir_pts = inlier_ir_pts;
-            std::cout << "debug: Homography computed with RANSAC. Inliers: " << inlier_count << "/" << mask.rows << std::endl;
-        } else {
-            std::cout << "debug: Homography computed with least-squares (all points)." << std::endl;
+            for (cv::Point2i &pt : ir_pts) {
+                pt.x = pt.x * param_.out_width_scale + param_.bias_x;
+                pt.y = pt.y * param_.out_height_scale + param_.bias_y;
+            }
         }
+
+        // 與LibTorch版本保持一致，不在這裡做RANSAC，只返回特徵點
+        // RANSAC處理將在main.cpp中進行
+        H = cv::Mat::eye(3, 3, CV_64F);  // 返回單位矩陣，讓main.cpp處理homography計算
+        std::cout << "debug: Feature point extraction complete. Found " << eo_pts.size() << " points." << std::endl;
     }
 
     // Pre-processing and inference prediction
@@ -170,8 +149,19 @@ public:
         cv::resize(ir, ir_resized, cv::Size(param_.input_w, param_.input_h));
 
         cv::Mat eo_gray, ir_gray;
-        cv::cvtColor(eo_resized, eo_gray, cv::COLOR_BGR2GRAY);
-        cv::cvtColor(ir_resized, ir_gray, cv::COLOR_BGR2GRAY);
+        
+        // 檢查圖像是否已經是灰度圖
+        if (eo_resized.channels() == 3) {
+            cv::cvtColor(eo_resized, eo_gray, cv::COLOR_BGR2GRAY);
+        } else {
+            eo_gray = eo_resized.clone();
+        }
+        
+        if (ir_resized.channels() == 3) {
+            cv::cvtColor(ir_resized, ir_gray, cv::COLOR_BGR2GRAY);  
+        } else {
+            ir_gray = ir_resized.clone();
+        }
 
         cv::Mat eo_float, ir_float;
         eo_gray.convertTo(eo_float, CV_32F, 1.0 / 255.0);
@@ -218,34 +208,22 @@ public:
         
         std::cout << "debug: Inference successful. Total valid points to select: " << valid_points_count << std::endl;
 
-        // 3. Post-processing: Select top 'valid_points_count' points
-        std::cout << "debug: [pred] Before resizing based on leng1. Current points: " << eo_mkpts.size() << ", Target points: " << valid_points_count << std::endl;
-        if (valid_points_count > 0 && valid_points_count <= eo_mkpts.size()) {
+        // 3. Post-processing: 使用前leng個特徵點，後面的都是(0,0)不採用
+        std::cout << "debug: [pred] Using first " << valid_points_count << " keypoints out of " << eo_mkpts.size() << " detected." << std::endl;
+        
+        if (valid_points_count > 0 && valid_points_count <= (int)eo_mkpts.size()) {
+            // 只保留前leng個有效特徵點
             eo_mkpts.resize(valid_points_count);
             ir_mkpts.resize(valid_points_count);
-        } else if (valid_points_count > eo_mkpts.size()) {
-             std::cout << "debug: WARNING: leng1 (" << valid_points_count << ") is greater than the number of keypoints detected (" << eo_mkpts.size() << "). Using all detected points." << std::endl;
-        } else {
-            std::cout << "debug: WARNING: No valid points to select (leng1=" << valid_points_count << "). Clearing results." << std::endl;
+            std::cout << "debug: [pred] Resized to " << eo_mkpts.size() << " keypoints based on leng=" << valid_points_count << std::endl;
+        } else if (valid_points_count <= 0) {
+            std::cout << "debug: WARNING: leng=" << valid_points_count << " is invalid. Clearing results." << std::endl;
             eo_mkpts.clear();
             ir_mkpts.clear();
+        } else {
+            std::cout << "debug: WARNING: leng=" << valid_points_count << " is greater than detected points " << eo_mkpts.size() << ". Using all detected points." << std::endl;
         }
-        std::cout << "debug: [pred] After resizing based on leng1. Final points: " << eo_mkpts.size() << std::endl;
-
-        // 4. Scale points to output resolution, matching the ONNX version's logic
-        std::cout << "debug: [pred] Scaling points with bias. Scale W: " << param_.out_width_scale << ", Scale H: " << param_.out_height_scale << ", Bias X: " << param_.bias_x << ", Bias Y: " << param_.bias_y << std::endl;
-        for (auto& pt : eo_mkpts) {
-            float scaled_x = pt.x * param_.out_width_scale + param_.bias_x;
-            float scaled_y = pt.y * param_.out_height_scale + param_.bias_y;
-            pt.x = static_cast<int>(scaled_x);
-            pt.y = static_cast<int>(scaled_y);
-        }
-        for (auto& pt : ir_mkpts) {
-            float scaled_x = pt.x * param_.out_width_scale + param_.bias_x;
-            float scaled_y = pt.y * param_.out_height_scale + param_.bias_y;
-            pt.x = static_cast<int>(scaled_x);
-            pt.y = static_cast<int>(scaled_y);
-        }
+        
         std::cout << "debug: Post-processing complete. Final keypoint count: " << eo_mkpts.size() << std::endl;
     }
 
@@ -406,7 +384,7 @@ public:
         std::cout << "debug: [runInference] After parsing loop. Parsed " << eo_kps.size() << " raw keypoints." << std::endl;
 
         // Print first 5 keypoints to check their values
-        for (int i = 0; i < std::min(99999, (int)eo_kps.size()); ++i) {
+        for (int i = 0; i < std::min(5, (int)eo_kps.size()); ++i) {
             std::cout << "debug: [runInference] Raw KP " << i << ": EO(" << eo_kps[i].x << "," << eo_kps[i].y 
                       << "), IR(" << ir_kps[i].x << "," << ir_kps[i].y << ")" << std::endl;
         }

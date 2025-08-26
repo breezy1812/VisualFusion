@@ -66,8 +66,8 @@ inline void init_config(nlohmann::json &config)
   config.emplace("output_width", 480);
   config.emplace("output_height", 360);
 
-  config.emplace("pred_width", 320);//480,360
-  config.emplace("pred_height", 240);// 640 480
+  config.emplace("pred_width", 480);//480,360
+  config.emplace("pred_height", 360);// 640 480
 
   config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
@@ -580,7 +580,7 @@ int main(int argc, char **argv)
         // 單次model對齊
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
-        image_align->align(eo_resized, ir_resized, eo_pts, ir_pts, M_single);
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
         
         // ========== RANSAC 濾除 outlier，提升精度 ==========
         cv::Mat refined_H = M_single.clone();
@@ -589,7 +589,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
@@ -751,7 +751,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 10.0, mask, 800, 0.98);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
