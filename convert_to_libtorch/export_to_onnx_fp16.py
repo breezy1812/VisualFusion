@@ -1,19 +1,18 @@
 import torch
 import os
 import onnx
-from onnxconverter_common import float16
 
 from model_jit.SemLA import SemLA
 
-print("=== SemLA ONNX FP16 轉換腳本 ===")
+print("=== SemLA ONNX FP16 轉換腳本 (直接導出) ===")
 
 # 使用CUDA來獲得最佳性能
 device = torch.device("cuda")
 print(f"使用設備: {device}")
 
-# 先以 FP32 載入模型
-fpMode = torch.float32
-print("正在載入模型...")
+# 直接以 FP16 載入並轉換模型
+fpMode = torch.float16
+print("正在載入並轉換模型為 FP16...")
 matcher = SemLA(device=device, fp=fpMode)
 matcher.load_state_dict(torch.load(f"./reg.ckpt", map_location=device), strict=False)
 matcher = matcher.eval().to(device, dtype=fpMode)
@@ -22,7 +21,7 @@ matcher = matcher.eval().to(device, dtype=fpMode)
 width = 320
 height = 240
 
-print(f"建立輸入張量，尺寸: {height}x{width}")
+print(f"建立 FP16 輸入張量，尺寸: {height}x{width}")
 torch_input_1 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 torch_input_2 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 
@@ -30,64 +29,33 @@ torch_input_2 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 output_dir = "../Onnx/model/onnxModel"
 os.makedirs(output_dir, exist_ok=True)
 
-# 先導出FP32 ONNX模型
-fp32_output_path = f"{output_dir}/SemLA_onnx_{width}x{height}_fp32_temp.onnx"
-fp16_output_path = f"{output_dir}/zETOfp16op12_fp16_{device}.onnx"
+# 直接導出FP16 ONNX模型
+# 使用一個新名稱以避免與舊模型混淆
+fp16_output_path = f"{output_dir}/zfp16_op12.onnx"
 
-print(f"步驟1: 轉換為FP32 ONNX模型...")
-print(f"臨時路徑: {fp32_output_path}")
+print(f"直接轉換為FP16 ONNX模型...")
+print(f"最終路徑: {fp16_output_path}")
 
 try:
     torch.onnx.export(
         matcher,
         (torch_input_1, torch_input_2),
-        fp32_output_path,
+        fp16_output_path,
         verbose=False,
-        opset_version=12,  # 使用較新版本支援更多操作
+        opset_version=12,
         input_names=["vi_img", "ir_img"],
         output_names=["mkpt0", "mkpt1", "leng1", "leng2"],
         do_constant_folding=True,
-        # 移除dynamic_axes，使用固定尺寸
     )
-    print("✅ FP32 ONNX模型轉換完成")
-    
-    # 驗證FP32模型
-    onnx_model = onnx.load(fp32_output_path)
-    onnx.checker.check_model(onnx_model)
-    print("✅ FP32 ONNX模型驗證通過")
-    
-except Exception as e:
-    print(f"❌ FP32 ONNX轉換失敗: {e}")
-    exit(1)
+    print("✅ FP16 ONNX模型直接轉換完成")
 
-print(f"步驟2: 轉換為FP16 ONNX模型...")
-print(f"最終路徑: {fp16_output_path}")
-
-try:
-    # 載入FP32模型並轉換為FP16
-    fp32_model = onnx.load(fp32_output_path)
-    
-    # 轉換為FP16，保持輸入為FP32
-    fp16_model = float16.convert_float_to_float16(
-        fp32_model, 
-        keep_io_types=True  # 保持輸入輸出為FP32以提高兼容性
-    )
-    
-    # 儲存FP16模型
-    onnx.save(fp16_model, fp16_output_path)
-    print("✅ FP16 ONNX模型轉換完成")
-    
     # 驗證FP16模型
-    onnx.checker.check_model(fp16_model)
+    onnx_model = onnx.load(fp16_output_path)
+    onnx.checker.check_model(onnx_model)
     print("✅ FP16 ONNX模型驗證通過")
-    
-    # 清理臨時檔案
-    os.remove(fp32_output_path)
-    print("🧹 清理臨時檔案完成")
-    
+
 except Exception as e:
-    print(f"❌ FP16轉換失敗: {e}")
-    print("可能需要安裝: pip install onnxconverter-common")
+    print(f"❌ FP16 ONNX轉換失敗: {e}")
     exit(1)
 
 # 檢查檔案大小比較
@@ -102,7 +70,6 @@ print(f'    "{fp16_output_path}"')
 
 # 提供測試建議
 print("\n💡 測試建議:")
-print("1. 更新config.json使用新的FP16模型路徑")
-print("2. 確保推論環境支援FP16操作")
+print("1. 使用更新後的 test_onnx_export.py 進行測試")
+print("2. 確保推理時輸入的資料型別為 float16")
 print("3. GPU環境下FP16可能提供更好的性能")
-print("4. 比較FP32與FP16的推論精度差異")

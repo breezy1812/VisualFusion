@@ -2,7 +2,6 @@ import torch
 import os
 
 from model_jit.SemLA import SemLA
-# only to fp17 need switch to opset 19
 
 # 使用CPU來避免CUDA相關問題，並提高兼容性
 # device = torch.device("cpu")
@@ -36,7 +35,7 @@ torch.onnx.export(
     (torch_input_1, torch_input_2),
     output_path,
     verbose=False,  # 減少輸出
-    opset_version=17,  # 使用支援einsum的版本
+    opset_version=12,  # 使用支援einsum的版本
     input_names=["vi_img", "ir_img"],
     output_names=["mkpt0", "mkpt1",'leng1','leng2'],  # 固定輸出
     # 移除dynamic_axes，使用固定的輸出尺寸 [1200, 2]

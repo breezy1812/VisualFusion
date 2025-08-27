@@ -3,13 +3,27 @@ import torch
 
 from model_jit.SemLA import SemLA
 
-mode = torch.float16
+# mode = torch.float16
+# device = torch.device("cuda")
+
+# matcher = SemLA(device, mode)
+# matcher.load_state_dict(torch.load(f"./reg.ckpt"), strict=False)
+
+# matcher = matcher.eval()
+
+print("=== SemLA ONNX FP16 轉換腳本 (直接導出) ===")
+
+# 使用CUDA來獲得最佳性能
 device = torch.device("cuda")
+print(f"使用設備: {device}")
 
-matcher = SemLA(device, mode)
-matcher.load_state_dict(torch.load(f"./reg.ckpt"), strict=False)
+# 直接以 FP16 載入並轉換模型
+fpMode = torch.float16
+print("正在載入並轉換模型為 FP16...")
+matcher = SemLA(device=device, fp=fpMode)
+matcher.load_state_dict(torch.load(f"./reg.ckpt", map_location=device), strict=False)
+matcher = matcher.eval().to(device, dtype=fpMode)
 
-matcher = matcher.eval()
 
 matcher = torch.jit.script(matcher)
 
