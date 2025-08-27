@@ -535,7 +535,7 @@ int main(int argc, char **argv)
     auto image_align = core::ImageAlignONNX::create_instance(
         core::ImageAlignONNX::Param()
             .set_size(pred_w, pred_h, out_w, out_h)
-            .set_model(device, model_path)
+            .set_model(device, model_path, pred_mode)  // 加入 pred_mode 參數
             .set_bias(0, 0));
     
 
@@ -592,6 +592,20 @@ int main(int argc, char **argv)
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
+        
+        // 提取圖片名稱用於CSV記錄
+        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos = img_name.find_last_of(".");
+        if (dot_pos != std::string::npos) {
+          img_name = img_name.substr(0, dot_pos);
+        }
+        size_t eo_pos = img_name.find("_EO");
+        if (eo_pos != std::string::npos) {
+          img_name = img_name.substr(0, eo_pos);
+        }
+        // 設置當前圖片名稱到模型中
+        image_align->set_current_image_name(img_name);
+        
         // 圖片裁剪
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
@@ -677,18 +691,7 @@ int main(int argc, char **argv)
         std::cout << "EO Path: " << eo_path << std::endl;
         std::cout << "IR Path: " << ir_path << std::endl;
         
-        // 提取圖片名稱
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
-        }
-        size_t eo_pos = img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
-        }
-        
-        // 讀取 GT homography
+        // 讀取 GT homography（使用之前提取的 img_name）
         cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
         
         if (!gt_homo.empty()) {

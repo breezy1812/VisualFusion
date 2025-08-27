@@ -37,6 +37,7 @@ public:
         // 模型
         std::string device = "cpu";
         std::string model_path = "";
+        std::string pred_mode = "fp32";  // 新增：預測模式，支援 "fp32" 和 "fp16"
 
         // 前一幀距離、水平/垂直篩選距離、平均角度範圍、排序角度範圍
         float distance_last = 10.0;
@@ -60,7 +61,7 @@ public:
             return *this;
         }
 
-        Param &set_model(std::string device, std::string model_path) {
+        Param &set_model(std::string device, std::string model_path, std::string pred_mode = "fp32") {
             // 檢查模型
             if (!std::experimental::filesystem::exists(model_path))
                 throw std::invalid_argument("Model file not found");
@@ -72,6 +73,12 @@ public:
                 this->device = device;
             else
                 throw std::invalid_argument("Device not supported");
+
+            // 設定預測模式
+            if (pred_mode.compare("fp32") == 0 || pred_mode.compare("fp16") == 0)
+                this->pred_mode = pred_mode;
+            else
+                throw std::invalid_argument("Pred mode not supported, use 'fp32' or 'fp16'");
 
             return *this;
         }
@@ -102,6 +109,8 @@ public:
                       std::vector<cv::Point2i> &eo_pts,
                       std::vector<cv::Point2i> &ir_pts,
                       cv::Mat &H) = 0;
+
+    virtual void set_current_image_name(const std::string& name) = 0;  // 新增：設置當前圖片名稱
 
     virtual ~ImageAlignONNX() = default;
 };

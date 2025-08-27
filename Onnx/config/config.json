@@ -4,7 +4,7 @@
     "output": true,
 
     "device": "cuda",
-    "pred_mode": "fp16",
+    "pred_mode": "fp32",
     "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fp32_cuda.onnx",
 
     "VideoCut":true,

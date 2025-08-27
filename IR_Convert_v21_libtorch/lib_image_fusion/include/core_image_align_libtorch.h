@@ -121,7 +121,7 @@ namespace core
 
       Param &set_bias(int x, int y)
       {
-         bias_x = x;
+        bias_x = x;
         bias_y = y;
         return *this;
       }
@@ -134,7 +134,7 @@ namespace core
 
     explicit ImageAlign(Param param);
 
-    void align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H);
+    void align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H, const std::string& filename = "");
 
   private:
     Param param_;
@@ -149,11 +149,7 @@ namespace core
     void warm_up();
 
     // prediction
-    void pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts);
-
-    // timing CSV writer
-    // void writeTimingToCSV(const std::string& operation, double time_ms);
-    void writeTimingToCSV(const std::string& operation, double time_ms,int leng);
+    void pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, const std::string& filename = "");
 
     // linear equation
     std::vector<float> line_equation(cv::Point2f &pt1, cv::Point2f &pt2);
@@ -207,6 +203,9 @@ namespace core
 
     // filter last H
     std::vector<int> filter_last_H(std::vector<std::vector<int>> &q_idx, std::vector<cv::Point2i> &eo_mkpts, std::vector<cv::Point2i> &ir_mkpts, cv::Mat &H);
+    
+    // write timing data to CSV
+    void writeTimingToCSV(const std::string& operation, double time_ms, int leng, const std::string& filename = "");
   };
 
 } /* namespace core */

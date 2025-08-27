@@ -23,6 +23,7 @@ private:
     // CSV logging for inference times
     std::ofstream csv_file_;
     int inference_count_ = 0;
+    std::string current_image_name_ = "";  // 新增：當前處理的圖片名稱
     
     // Warm-up inference to optimize CUDA performance
     void warmup_inference() {
@@ -68,7 +69,7 @@ public:
             // Write header if file is empty/new
             csv_file_.seekp(0, std::ios::end);
             if (csv_file_.tellp() == 0) {
-                csv_file_ << "Frame,Inference_Time_Seconds,Features_Count" << std::endl;
+                csv_file_ << "Image_Name,Inference_Time_Seconds,Features_Count" << std::endl;
             }
         }
         
@@ -181,75 +182,180 @@ public:
             cv::cvtColor(ir_temp, ir_temp, cv::COLOR_BGR2GRAY);
         }
 
-        // normalize eo and ir to 0-1, and convert from cv::Mat to float
-        eo_temp.convertTo(eo_temp, CV_32F, 1.0f / 255.0f);
-        ir_temp.convertTo(ir_temp, CV_32F, 1.0f / 255.0f);
-
-        // change the address type from uchar* to float*
-        float *eo_data = reinterpret_cast<float *>(eo_temp.data);
-        float *ir_data = reinterpret_cast<float *>(ir_temp.data);
-
-        // create tensor shape [1, 1, H, W]
-        std::vector<int64_t> input_shape = {1, 1, param_.pred_height, param_.pred_width};
-        size_t input_size = param_.pred_height * param_.pred_width;
-
-        // create tensor
-        Ort::Value eo_tensor = Ort::Value::CreateTensor<float>(*memory_info_, eo_data, input_size, input_shape.data(), 4);
-        Ort::Value ir_tensor = Ort::Value::CreateTensor<float>(*memory_info_, ir_data, input_size, input_shape.data(), 4);
-
-        // create input tensor
-        std::vector<Ort::Value> inputs;
-        inputs.push_back(std::move(eo_tensor));
-        inputs.push_back(std::move(ir_tensor));
-
-        // Start inference timing
-        auto inference_start = std::chrono::high_resolution_clock::now();
-        
-        // Create run options for better performance
-        Ort::RunOptions run_options;
-        run_options.SetRunLogSeverityLevel(3);  // Reduce logging overhead
-        
-        // run the model
-        auto pred = session_->Run(run_options, input_names_.data(), inputs.data(), 2, output_names_.data(), output_names_.size());
-        
-        // End inference timing and calculate duration
-        auto inference_end = std::chrono::high_resolution_clock::now();
-        auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
-        inference_time_seconds = inference_duration.count() / 1000000.0;  // Convert to seconds
-        
-        std::cout << "ONNX Inference time: " << inference_time_seconds << " seconds" << std::endl;
-
-        // get mkpts from the model output
-        const int64_t *eo_res = pred[0].GetTensorMutableData<int64_t>();
-        const int64_t *ir_res = pred[1].GetTensorMutableData<int64_t>();
-
-        const long int leng1 = pred[2].GetTensorMutableData<long int>()[0];
-        const long int leng2 = pred[3].GetTensorMutableData<long int>()[0];
-        
-        eo_mkpts.clear();
-        ir_mkpts.clear();
-
-        // push keypoints to eo_mkpts and ir_mkpts - 不進行縮放，與LibTorch版本一致
-        // int len = pred[0].GetTensorTypeAndShapeInfo().GetShape()[0];
-        int len = leng1;
-        for (int i = 0, pt = 0; i < len; i++, pt += 2) {
-            // 直接使用原始座標，不進行縮放（縮放將在align函數中處理）
-            int eo_x = (int)eo_res[pt];
-            int eo_y = (int)eo_res[pt + 1];
-            int ir_x = (int)ir_res[pt];
-            int ir_y = (int)ir_res[pt + 1];
+        // normalize eo and ir to 0-1, and convert from cv::Mat to float/half
+        if (param_.pred_mode == "fp16") {
+            std::cout << "DEBUG: Using FP16 input mode" << std::endl;
             
-            eo_mkpts.push_back(cv::Point2i(eo_x, eo_y));
-            ir_mkpts.push_back(cv::Point2i(ir_x, ir_y));
-        }
-        
-        std::cout << "Extracted " << len << " feature point pairs" << std::endl;
-        
-        // Log inference time to CSV
-        inference_count_++;
-        if (csv_file_.is_open()) {
-            csv_file_ << inference_count_ << "," << inference_time_seconds << ",  " << len << std::endl;
-            csv_file_.flush();  // Ensure immediate write to file
+            // 對於 FP16 模式，直接轉換為 CV_16F (half precision float)
+            eo_temp.convertTo(eo_temp, CV_16F, 1.0f / 255.0f);
+            ir_temp.convertTo(ir_temp, CV_16F, 1.0f / 255.0f);
+            
+            // 建立 FP16 資料緩衝區
+            std::vector<uint16_t> eo_fp16_data(param_.pred_height * param_.pred_width);
+            std::vector<uint16_t> ir_fp16_data(param_.pred_height * param_.pred_width);
+            
+            // 將 OpenCV CV_16F 資料轉換為 uint16_t (FP16 的原始格式)
+            const uint16_t* eo_src = reinterpret_cast<const uint16_t*>(eo_temp.data);
+            const uint16_t* ir_src = reinterpret_cast<const uint16_t*>(ir_temp.data);
+            
+            std::copy(eo_src, eo_src + eo_fp16_data.size(), eo_fp16_data.begin());
+            std::copy(ir_src, ir_src + ir_fp16_data.size(), ir_fp16_data.begin());
+            
+            // create tensor shape [1, 1, H, W]
+            std::vector<int64_t> input_shape = {1, 1, param_.pred_height, param_.pred_width};
+            size_t input_size = param_.pred_height * param_.pred_width;
+
+            std::cout << "DEBUG: Creating FP16 tensors with shape [1, 1, " << param_.pred_height << ", " << param_.pred_width << "]" << std::endl;
+
+            // 建立 FP16 張量 - 使用 Ort::Float16_t
+            Ort::Value eo_tensor = Ort::Value::CreateTensor<Ort::Float16_t>(
+                *memory_info_, 
+                reinterpret_cast<Ort::Float16_t*>(eo_fp16_data.data()), 
+                input_size, 
+                input_shape.data(), 
+                4
+            );
+            Ort::Value ir_tensor = Ort::Value::CreateTensor<Ort::Float16_t>(
+                *memory_info_, 
+                reinterpret_cast<Ort::Float16_t*>(ir_fp16_data.data()), 
+                input_size, 
+                input_shape.data(), 
+                4
+            );
+            
+            // create input tensor
+            std::vector<Ort::Value> inputs;
+            inputs.push_back(std::move(eo_tensor));
+            inputs.push_back(std::move(ir_tensor));
+            
+            // Start inference timing
+            auto inference_start = std::chrono::high_resolution_clock::now();
+            
+            // Create run options for better performance
+            Ort::RunOptions run_options;
+            run_options.SetRunLogSeverityLevel(3);  // Reduce logging overhead
+            
+            std::cout << "DEBUG: Running FP16 model inference..." << std::endl;
+            
+            // run the model
+            auto pred = session_->Run(run_options, input_names_.data(), inputs.data(), 2, output_names_.data(), output_names_.size());
+            
+            // End inference timing and calculate duration
+            auto inference_end = std::chrono::high_resolution_clock::now();
+            auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
+            inference_time_seconds = inference_duration.count() / 1000000.0;  // Convert to seconds
+            
+            std::cout << "ONNX FP16 Inference time: " << inference_time_seconds << " seconds" << std::endl;
+            
+            // get mkpts from the model output
+            const int64_t *eo_res = pred[0].GetTensorMutableData<int64_t>();
+            const int64_t *ir_res = pred[1].GetTensorMutableData<int64_t>();
+
+            const long int leng1 = pred[2].GetTensorMutableData<long int>()[0];
+            const long int leng2 = pred[3].GetTensorMutableData<long int>()[0];
+            
+            eo_mkpts.clear();
+            ir_mkpts.clear();
+
+            // push keypoints to eo_mkpts and ir_mkpts - 不進行縮放，與LibTorch版本一致
+            int len = leng1;
+            for (int i = 0, pt = 0; i < len; i++, pt += 2) {
+                // 直接使用原始座標，不進行縮放（縮放將在align函數中處理）
+                int eo_x = (int)eo_res[pt];
+                int eo_y = (int)eo_res[pt + 1];
+                int ir_x = (int)ir_res[pt];
+                int ir_y = (int)ir_res[pt + 1];
+                
+                eo_mkpts.push_back(cv::Point2i(eo_x, eo_y));
+                ir_mkpts.push_back(cv::Point2i(ir_x, ir_y));
+            }
+            
+            std::cout << "Extracted " << len << " feature point pairs (FP16 mode)" << std::endl;
+            
+            // Log inference time to CSV (FP16 mode)
+            inference_count_++;
+            if (csv_file_.is_open()) {
+                std::string image_name = current_image_name_.empty() ? ("frame_" + std::to_string(inference_count_)) : current_image_name_;
+                csv_file_ << image_name << "," << inference_time_seconds << "," << len << std::endl;
+                csv_file_.flush();  // Ensure immediate write to file
+            }
+            
+        } else {
+            // 原本的 FP32 模式
+            std::cout << "DEBUG: Using FP32 input mode" << std::endl;
+            
+            // normalize eo and ir to 0-1, and convert from cv::Mat to float
+            eo_temp.convertTo(eo_temp, CV_32F, 1.0f / 255.0f);
+            ir_temp.convertTo(ir_temp, CV_32F, 1.0f / 255.0f);
+
+            // change the address type from uchar* to float*
+            float *eo_data = reinterpret_cast<float *>(eo_temp.data);
+            float *ir_data = reinterpret_cast<float *>(ir_temp.data);
+
+            // create tensor shape [1, 1, H, W]
+            std::vector<int64_t> input_shape = {1, 1, param_.pred_height, param_.pred_width};
+            size_t input_size = param_.pred_height * param_.pred_width;
+
+            // create tensor
+            Ort::Value eo_tensor = Ort::Value::CreateTensor<float>(*memory_info_, eo_data, input_size, input_shape.data(), 4);
+            Ort::Value ir_tensor = Ort::Value::CreateTensor<float>(*memory_info_, ir_data, input_size, input_shape.data(), 4);
+
+            // create input tensor
+            std::vector<Ort::Value> inputs;
+            inputs.push_back(std::move(eo_tensor));
+            inputs.push_back(std::move(ir_tensor));
+
+            // Start inference timing
+            auto inference_start = std::chrono::high_resolution_clock::now();
+            
+            // Create run options for better performance
+            Ort::RunOptions run_options;
+            run_options.SetRunLogSeverityLevel(3);  // Reduce logging overhead
+            
+            std::cout << "DEBUG: Running FP32 model inference..." << std::endl;
+            
+            // run the model
+            auto pred = session_->Run(run_options, input_names_.data(), inputs.data(), 2, output_names_.data(), output_names_.size());
+            
+            // End inference timing and calculate duration
+            auto inference_end = std::chrono::high_resolution_clock::now();
+            auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
+            inference_time_seconds = inference_duration.count() / 1000000.0;  // Convert to seconds
+            
+            std::cout << "ONNX FP32 Inference time: " << inference_time_seconds << " seconds" << std::endl;
+
+            // get mkpts from the model output
+            const int64_t *eo_res = pred[0].GetTensorMutableData<int64_t>();
+            const int64_t *ir_res = pred[1].GetTensorMutableData<int64_t>();
+
+            const long int leng1 = pred[2].GetTensorMutableData<long int>()[0];
+            const long int leng2 = pred[3].GetTensorMutableData<long int>()[0];
+            
+            eo_mkpts.clear();
+            ir_mkpts.clear();
+
+            // push keypoints to eo_mkpts and ir_mkpts - 不進行縮放，與LibTorch版本一致
+            int len = leng1;
+            for (int i = 0, pt = 0; i < len; i++, pt += 2) {
+                // 直接使用原始座標，不進行縮放（縮放將在align函數中處理）
+                int eo_x = (int)eo_res[pt];
+                int eo_y = (int)eo_res[pt + 1];
+                int ir_x = (int)ir_res[pt];
+                int ir_y = (int)ir_res[pt + 1];
+                
+                eo_mkpts.push_back(cv::Point2i(eo_x, eo_y));
+                ir_mkpts.push_back(cv::Point2i(ir_x, ir_y));
+            }
+            
+            std::cout << "Extracted " << len << " feature point pairs (FP32 mode)" << std::endl;
+            
+            // Log inference time to CSV (FP32 mode)
+            inference_count_++;
+            if (csv_file_.is_open()) {
+                std::string image_name = current_image_name_.empty() ? ("frame_" + std::to_string(inference_count_)) : current_image_name_;
+                csv_file_ << image_name << "," << inference_time_seconds << "," << len << std::endl;
+                csv_file_.flush();  // Ensure immediate write to file
+            }
         }
     }
 
@@ -294,6 +400,10 @@ public:
             std::cerr << "Error in alignment: " << e.what() << std::endl;
             return false;
         }
+    }
+
+    void set_current_image_name(const std::string& name) override {
+        current_image_name_ = name;
     }
 };
 

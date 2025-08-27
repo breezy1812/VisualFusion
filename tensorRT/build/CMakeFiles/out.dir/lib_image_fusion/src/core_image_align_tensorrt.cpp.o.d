@@ -385,4 +385,6 @@ CMakeFiles/out.dir/lib_image_fusion/src/core_image_align_tensorrt.cpp.o: \
  /opt/TensorRT-8.6.1.6/include/NvInferRuntime.h \
  /opt/TensorRT-8.6.1.6/include/NvInferImpl.h /usr/include/c++/9/numeric \
  /usr/include/c++/9/bits/stl_numeric.h \
- /usr/include/c++/9/pstl/glue_numeric_defs.h
+ /usr/include/c++/9/pstl/glue_numeric_defs.h \
+ /usr/local/cuda/include/cuda_fp16.h \
+ /usr/local/cuda/include/cuda_fp16.hpp

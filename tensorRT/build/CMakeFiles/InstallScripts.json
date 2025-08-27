@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/circ330/forgithub/VisualFusion_libtorch/tensorRT/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

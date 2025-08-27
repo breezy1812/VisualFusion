@@ -4,8 +4,8 @@
     "output": true,
 
     "device": "cuda",
-    "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_1200kps_onlyCuda.engine",
+    "pred_mode": "fp16",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_semla_fp16_op12.engine",
 
     "VideoCut":true,
     "Vcut_x": 870,

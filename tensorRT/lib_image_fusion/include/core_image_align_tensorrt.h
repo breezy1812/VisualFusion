@@ -19,6 +19,8 @@ public:
         float bias_x = 0.0f;
         float bias_y = 0.0f;
         std::string engine_path;
+        std::string pred_mode = "fp32";  // 添加 pred_mode 參數，預設為 fp32
+        std::string image_name = "";     // 添加圖片名稱參數
         Param& set_size(int iw, int ih, int ow, int oh) {
             input_w = iw; input_h = ih; output_w = ow; output_h = oh;
             // 自動計算縮放參數，與LibTorch版本保持一致
@@ -34,6 +36,8 @@ public:
             return *this;
         }
         Param& set_engine(const std::string& path) { engine_path = path; return *this; }
+        Param& set_pred_mode(const std::string& mode) { pred_mode = mode; return *this; }
+        Param& set_image_name(const std::string& name) { image_name = name; return *this; }
     };
     static std::shared_ptr<ImageAlignTensorRT> create_instance(const Param& param);
     
@@ -41,6 +45,9 @@ public:
     // and computes the homography matrix.
     // The keypoint vectors (eo_pts, ir_pts) are cleared and then filled with the results.
     virtual void align(const cv::Mat& eo, const cv::Mat& ir, std::vector<cv::Point2i>& eo_pts, std::vector<cv::Point2i>& ir_pts, cv::Mat& H) = 0;
+    
+    // Set current image name for CSV logging
+    virtual void set_current_image_name(const std::string& image_name) = 0;
     
     virtual ~ImageAlignTensorRT();
 

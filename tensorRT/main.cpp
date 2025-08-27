@@ -66,8 +66,8 @@ inline void init_config(nlohmann::json &config)
   config.emplace("output_width", 480);
   config.emplace("output_height", 360);
 
-  config.emplace("pred_width", 480);//480,360
-  config.emplace("pred_height", 360);// 640 480
+  config.emplace("pred_width", 320);//480,360
+  config.emplace("pred_height", 240);// 640 480
 
   config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
@@ -518,7 +518,8 @@ int main(int argc, char **argv)
     auto image_align = core::ImageAlignTensorRT::create_instance(
         core::ImageAlignTensorRT::Param()
             .set_size(pred_w, pred_h, out_w, out_h)
-            .set_engine(model_path));
+            .set_engine(model_path)
+            .set_pred_mode(pred_mode));  // 加入 pred_mode 參數
     
 
     // 開始計時
@@ -578,6 +579,19 @@ int main(int argc, char **argv)
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
         // 單次model對齊
+        
+        // 設定當前圖片名稱用於 CSV 記錄
+        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos = img_name.find_last_of(".");
+        if (dot_pos != std::string::npos) {
+          img_name = img_name.substr(0, dot_pos);
+        }
+        size_t eo_pos = img_name.find("_EO");
+        if (eo_pos != std::string::npos) {
+          img_name = img_name.substr(0, eo_pos);
+        }
+        image_align->set_current_image_name(img_name);
+        
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
@@ -651,18 +665,18 @@ int main(int argc, char **argv)
         std::cout << "IR Path: " << ir_path << std::endl;
         
         // 提取圖片名稱
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
+        std::string img_name_csv = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos_csv = img_name_csv.find_last_of(".");
+        if (dot_pos_csv != std::string::npos) {
+          img_name_csv = img_name_csv.substr(0, dot_pos_csv);
         }
-        size_t eo_pos = img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
+        size_t eo_pos_csv = img_name_csv.find("_EO");
+        if (eo_pos_csv != std::string::npos) {
+          img_name_csv = img_name_csv.substr(0, eo_pos_csv);
         }
         
         // 讀取 GT homography
-        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
+        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name_csv);
         
         if (!gt_homo.empty()) {
           // 使用當前config指定的插值方法和已計算的homography
@@ -687,13 +701,13 @@ int main(int argc, char **argv)
           
           std::string is_cubic = isUsingCubic ? "Yes" : "No";
           std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << img_name << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
+          csv_file << img_name_csv << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
           csv_file.close();
           
           std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
           std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
         } else {
-          std::cout << "GT homography not found for image: " << img_name << std::endl;
+          std::cout << "GT homography not found for image: " << img_name_csv << std::endl;
         }
         
         // int key = waitKey(0); // 註解掉以避免GUI錯誤
@@ -731,6 +745,10 @@ int main(int argc, char **argv)
       
       // 每50幀計算一次特徵點
       if (cnt % compute_per_frame == 0) {
+        // 設定當前幀名稱用於 CSV 記錄
+        std::string frame_name = "frame_" + std::to_string(cnt);
+        image_align->set_current_image_name(frame_name);
+        
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
         image_align->align(img_eo, img_ir, eo_pts, ir_pts, M); // Pass BGR images

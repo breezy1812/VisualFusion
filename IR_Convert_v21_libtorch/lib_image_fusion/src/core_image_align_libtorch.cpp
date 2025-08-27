@@ -28,8 +28,8 @@ namespace core
 
     printf("Model initialization completed\n");
 
-    if (param_.device.compare("cuda") == 0)
-      warm_up();
+    // if (param_.device.compare("cuda") == 0)
+    //   warm_up();
   }
 
   // warm up
@@ -55,7 +55,7 @@ namespace core
   }
 
   // prediction - MODIFIED: 改善精度和資料處理，符合Python版本
-  void ImageAlign::pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts)
+  void ImageAlign::pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, const std::string& filename)
   {
     if (eo.channels() != 1 || ir.channels() != 1)
       throw std::runtime_error("ImageAlign::pred: eo and ir must be single channel images");
@@ -70,27 +70,40 @@ namespace core
     cv::Mat eo_float, ir_float;
     eo_temp.convertTo(eo_float, CV_32F, 1.0f / 255.0f);
     ir_temp.convertTo(ir_float, CV_32F, 1.0f / 255.0f);
-    
-    // 確保記憶體連續性，與Python版本一致
-    eo_float = eo_float.clone();
-    ir_float = ir_float.clone();
 
-    // 創建tensor，避免from_blob可能的記憶體問題
-    torch::Tensor eo_tensor = torch::from_blob(eo_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone().to(device);
-    torch::Tensor ir_tensor = torch::from_blob(ir_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone().to(device);
+    // 創建tensor，直接指定目標精度以減少轉換開銷
+    bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
     
-    // MODIFIED: 只在明確需要時才使用FP16，優先保持FP32精度
-    if (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0)
-    {
-      eo_tensor = eo_tensor.to(torch::kHalf);
-      ir_tensor = ir_tensor.to(torch::kHalf);
+    torch::Tensor eo_tensor, ir_tensor;
+    if (use_fp16) {
+      // 直接創建FP16 tensor以避免二次轉換
+      eo_tensor = torch::from_blob(eo_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
+          .to(device).to(torch::kHalf);
+      ir_tensor = torch::from_blob(ir_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
+          .to(device).to(torch::kHalf);
+    } else {
+      // FP32 模式
+      eo_tensor = torch::from_blob(eo_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
+          .to(device);
+      ir_tensor = torch::from_blob(ir_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
+          .to(device);
     }
 
     // 計時 - 模型推論開始
     auto model_inference_start = std::chrono::high_resolution_clock::now();
 
+    // // 確保CUDA操作完成後再開始計時推論
+    // if (param_.device.compare("cuda") == 0) {
+    //   torch::cuda::synchronize();
+    // }
+
     // run the model
     torch::IValue pred = net.forward({eo_tensor, ir_tensor});
+    
+    // // 確保推論完成
+    // if (param_.device.compare("cuda") == 0) {
+    //   torch::cuda::synchronize();
+    // }
     
     // 計時 - 模型推論結束
     auto model_inference_end = std::chrono::high_resolution_clock::now();
@@ -119,7 +132,7 @@ namespace core
     }
     
     // 寫入CSV檔案 - 只記錄模型推論時間
-    writeTimingToCSV("Model_Inference", model_inference_time,leng);
+    writeTimingToCSV("Model_Inference", model_inference_time, leng, filename);
     
     printf("Model inference time: %.6f s\n", model_inference_time);
 
@@ -128,10 +141,10 @@ namespace core
   }
 
   // align with last H - MODIFIED: 簡化過濾邏輯，使用Python風格的直接輸出
-  void ImageAlign::align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H)
+  void ImageAlign::align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H, const std::string& filename)
   {
     // predict keypoints
-    pred(eo, ir, eo_pts, ir_pts);
+    pred(eo, ir, eo_pts, ir_pts, filename);
 
     // 只進行基本的座標縮放和偏移調整
     if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0)
@@ -153,7 +166,7 @@ namespace core
   }
 
   // 寫入計時資料到CSV檔案
-  void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms,int leng)
+  void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms, int leng, const std::string& filename)
   {
     std::string csv_filename = "./timing_log.csv";
     bool file_exists = std::experimental::filesystem::exists(csv_filename);
@@ -162,23 +175,30 @@ namespace core
     
     if (!file_exists) {
       // 寫入CSV標頭
-      csv_file << "Timestamp,Operation,Time_s,Device,Mode\n";
+      csv_file << "Filename,Operation,Time_s,Mode,keypoints\n";
     }
     
-    // 獲取當前時間戳
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-    
-    std::stringstream timestamp;
-    timestamp << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
-    timestamp << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    // 使用檔案名稱代替時間戳，如果沒有提供檔案名稱則使用時間戳
+    std::string identifier;
+    if (!filename.empty()) {
+      identifier = filename;
+    } else {
+      // 獲取當前時間戳作為fallback
+      auto now = std::chrono::system_clock::now();
+      auto time_t = std::chrono::system_clock::to_time_t(now);
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+      
+      std::stringstream timestamp;
+      timestamp << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
+      timestamp << '.' << std::setfill('0') << std::setw(3) << ms.count();
+      identifier = timestamp.str();
+    }
     
     // 寫入資料
-    csv_file << timestamp.str() << "," 
+    csv_file << identifier << "," 
              << operation << "," 
              << std::fixed << std::setprecision(6) << time_ms << ","
-             << param_.mode <<",   "
+             << param_.mode << ","
              << leng << "\n";
     
     csv_file.close();

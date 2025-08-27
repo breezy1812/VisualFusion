@@ -604,10 +604,18 @@ int main(int argc, char **argv)
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
+        
+        // 注意: FP16轉換由LibTorch內部處理，不需要在OpenCV層面轉換
         // 單次model對齊
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
-        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
+        // 提取檔案名稱用於CSV記錄
+        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos = img_name.find_last_of(".");
+        if (dot_pos != std::string::npos) {
+          img_name = img_name.substr(0, dot_pos);
+        }
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single, img_name);
         
         // ========== RANSAC 濾除 outlier，提升精度 ==========
         cv::Mat refined_H = M_single.clone();
@@ -677,19 +685,15 @@ int main(int argc, char **argv)
         std::cout << "EO Path: " << eo_path << std::endl;
         std::cout << "IR Path: " << ir_path << std::endl;
         
-        // 提取圖片名稱
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
-        }
-        size_t eo_pos = img_name.find("_EO");
+        // 重新使用之前定義的img_name變數，處理CSV用的檔案名稱
+        std::string csv_img_name = img_name;
+        size_t eo_pos = csv_img_name.find("_EO");
         if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
+          csv_img_name = csv_img_name.substr(0, eo_pos);
         }
         
         // 讀取 GT homography
-        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
+        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, csv_img_name);
         
         if (!gt_homo.empty()) {
           // 使用當前config指定的插值方法和已計算的homography
@@ -714,13 +718,13 @@ int main(int argc, char **argv)
           
           std::string is_cubic = isUsingCubic ? "Yes" : "No";
           std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << img_name << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
+          csv_file << csv_img_name << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
           csv_file.close();
           
           std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
           std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
         } else {
-          std::cout << "GT homography not found for image: " << img_name << std::endl;
+          std::cout << "GT homography not found for image: " << csv_img_name << std::endl;
         }
         
         // int key = waitKey(0); // 註解掉以避免GUI錯誤
@@ -753,6 +757,9 @@ int main(int argc, char **argv)
         timer_gray.start();
         cv::cvtColor(img_ir, gray_ir, cv::COLOR_BGR2GRAY);
         cv::cvtColor(img_eo, gray_eo, cv::COLOR_BGR2GRAY);
+        
+        // 注意: FP16轉換由LibTorch內部處理，不需要在OpenCV層面轉換
+        
         timer_gray.stop();
       }
       
@@ -760,7 +767,9 @@ int main(int argc, char **argv)
       if (cnt % compute_per_frame == 0) {
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
-        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M);
+        // 為影片幀使用幀數作為標識符
+        std::string frame_identifier = "frame_" + std::to_string(cnt);
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M, frame_identifier);
         cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
         timer_align.stop();
 
