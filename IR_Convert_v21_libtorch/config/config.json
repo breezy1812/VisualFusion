@@ -5,7 +5,7 @@
 
     "device": "cuda",
     "pred_mode": "fp16",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cuda_fp162.zip",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_cuda_fp16.zip",
 
     "VideoCut":true,
     "Vcut_x": 870,
@@ -21,6 +21,7 @@
 
 
 
+
     "output_width": 320,
     "output_height": 240,
 
@@ -33,7 +34,6 @@
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
-    "fusion_interpolation":"cubic",
 
     "perspective_check": true,
     "perspective_distance": 10,

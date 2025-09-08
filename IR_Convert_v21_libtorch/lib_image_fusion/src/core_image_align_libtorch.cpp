@@ -28,8 +28,8 @@ namespace core
 
     printf("Model initialization completed\n");
 
-    // if (param_.device.compare("cuda") == 0)
-    //   warm_up();
+    // 執行 warmup，不論是 CPU 或 CUDA
+    warm_up();
   }
 
   // warm up
@@ -60,39 +60,28 @@ namespace core
     if (eo.channels() != 1 || ir.channels() != 1)
       throw std::runtime_error("ImageAlign::pred: eo and ir must be single channel images");
 
-    // resize input image to pred_width x pred_height
-    cv::Mat eo_temp, ir_temp;
-    cv::resize(eo, eo_temp, cv::Size(param_.pred_width, param_.pred_height));
-    cv::resize(ir, ir_temp, cv::Size(param_.pred_width, param_.pred_height));
-
-    // MODIFIED: 改善正規化，避免FP16精度損失，與Python版本保持一致
-    // 將圖像轉換為float32並正規化到[0,1]
-    cv::Mat eo_float, ir_float;
-    eo_temp.convertTo(eo_float, CV_32F, 1.0f / 255.0f);
-    ir_temp.convertTo(ir_float, CV_32F, 1.0f / 255.0f);
-
-    // 創建tensor，直接指定目標精度以減少轉換開銷
-    bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
+    // OPTIMAL: 最簡潔和準確的FP16/FP32處理方案
+    // 策略：只在模型推理時使用FP16，輸入處理和輸出都用FP32以保持精度
     
-    torch::Tensor eo_tensor, ir_tensor;
+    // 1. 直接創建FP32 tensor並正規化（只要1行！）
+    torch::Tensor eo_tensor = torch::from_blob(eo.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).to(device).to(torch::kFloat32) / 255.0f;
+    torch::Tensor ir_tensor = torch::from_blob(ir.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).to(device).to(torch::kFloat32) / 255.0f;
+    
+    // 2. 只在模型推理時才轉換為FP16（如果需要）
+    // #TODO:因為pytorch在推論會使用到混合精度所以才會比較慢，libtorch市全部都是fp16所以才比較快，還有因為全部都是fp16所以誤差容易放大
+    // #TODO:libtorch onnx trt 全部重測試 + warm up
+    
+
+    bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
     if (use_fp16) {
-      // 直接創建FP16 tensor以避免二次轉換
-      eo_tensor = torch::from_blob(eo_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
-          .to(device).to(torch::kHalf);
-      ir_tensor = torch::from_blob(ir_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
-          .to(device).to(torch::kHalf);
-    } else {
-      // FP32 模式
-      eo_tensor = torch::from_blob(eo_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
-          .to(device);
-      ir_tensor = torch::from_blob(ir_float.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32)
-          .to(device);
+      eo_tensor = eo_tensor.to(torch::kHalf);
+      ir_tensor = ir_tensor.to(torch::kHalf);
     }
 
     // 計時 - 模型推論開始
     auto model_inference_start = std::chrono::high_resolution_clock::now();
 
-    // // 確保CUDA操作完成後再開始計時推論
+    // // // 確保CUDA操作完成後再開始計時推論
     // if (param_.device.compare("cuda") == 0) {
     //   torch::cuda::synchronize();
     // }
@@ -127,8 +116,10 @@ namespace core
       float ir_x = ir_mkpts[i][0].item<float>();
       float ir_y = ir_mkpts[i][1].item<float>();
       
-      eo_pts.push_back(cv::Point2i(static_cast<int>(std::round(eo_x)), static_cast<int>(std::round(eo_y))));
-      ir_pts.push_back(cv::Point2i(static_cast<int>(std::round(ir_x)), static_cast<int>(std::round(ir_y))));
+      // eo_pts.push_back(cv::Point2i(static_cast<int>(std::round(eo_x)), static_cast<int>(std::round(eo_y))));
+      // ir_pts.push_back(cv::Point2i(static_cast<int>(std::round(ir_x)), static_cast<int>(std::round(ir_y))));
+      eo_pts.push_back(cv::Point2i(static_cast<int>(eo_x), static_cast<int>(eo_y)));
+      ir_pts.push_back(cv::Point2i(static_cast<int>(ir_x), static_cast<int>(ir_y)));
     }
     
     // 寫入CSV檔案 - 只記錄模型推論時間
@@ -146,19 +137,29 @@ namespace core
     // predict keypoints
     pred(eo, ir, eo_pts, ir_pts, filename);
 
-    // 只進行基本的座標縮放和偏移調整
-    if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0)
+    // CORRECTED: 與Python代碼完全一致的特徵點縮放條件檢查
+    if (std::abs(param_.out_width_scale - 1.0) > 1e-6 || std::abs(param_.out_height_scale - 1.0) > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0)
     {
       for (cv::Point2i &i : eo_pts)
       {
-        i.x = i.x * param_.out_width_scale + param_.bias_x;
-        i.y = i.y * param_.out_height_scale + param_.bias_y;
+        i.x = i.x * param_.out_width_scale  ;
+        i.y = i.y * param_.out_height_scale ;
       }
       for (cv::Point2i &i : ir_pts)
       {
-        i.x = i.x * param_.out_width_scale + param_.bias_x;
-        i.y = i.y * param_.out_height_scale + param_.bias_y;
+        i.x = i.x * param_.out_width_scale  ;
+        i.y = i.y * param_.out_height_scale ;
       }
+      
+      std::cout << "  - Feature point scaling applied: pred(" << param_.pred_width << "x" << param_.pred_height 
+                << ") -> out(" << param_.out_width_scale * param_.pred_width << "x" << param_.out_height_scale * param_.pred_height 
+                << "), scale=(" << param_.out_width_scale << ", " << param_.out_height_scale 
+                << "), bias=(" << param_.bias_x << ", " << param_.bias_y << ")" << std::endl;
+    }
+    else
+    {
+      std::cout << "  - No feature point scaling needed: scale=(" << param_.out_width_scale << ", " << param_.out_height_scale 
+                << "), bias=(" << param_.bias_x << ", " << param_.bias_y << ")" << std::endl;
     }
     
     // 輸出最終特徵點數量
@@ -168,7 +169,7 @@ namespace core
   // 寫入計時資料到CSV檔案
   void ImageAlign::writeTimingToCSV(const std::string& operation, double time_ms, int leng, const std::string& filename)
   {
-    std::string csv_filename = "./timing_log.csv";
+    std::string csv_filename = "./itiming_log.csv";
     bool file_exists = std::experimental::filesystem::exists(csv_filename);
     
     std::ofstream csv_file(csv_filename, std::ios::app);
@@ -183,15 +184,8 @@ namespace core
     if (!filename.empty()) {
       identifier = filename;
     } else {
-      // 獲取當前時間戳作為fallback
-      auto now = std::chrono::system_clock::now();
-      auto time_t = std::chrono::system_clock::to_time_t(now);
-      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-      
-      std::stringstream timestamp;
-      timestamp << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
-      timestamp << '.' << std::setfill('0') << std::setw(3) << ms.count();
-      identifier = timestamp.str();
+      std::cout<<"warm up"<<std::endl;
+      return;
     }
     
     // 寫入資料

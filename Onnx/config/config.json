@@ -4,8 +4,8 @@
     "output": true,
 
     "device": "cuda",
-    "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/SemLA_onnx_320x240_fp32_cuda.onnx",
+    "pred_mode": "fp16",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/zfp16_op12.onnx",
 
     "VideoCut":true,
     "Vcut_x": 870,
@@ -33,7 +33,6 @@
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
-    "fusion_interpolation":"cubic",
 
     "perspective_check": true,
     "perspective_distance": 10,

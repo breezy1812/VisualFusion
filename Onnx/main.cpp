@@ -27,10 +27,6 @@
 #include "lib_image_fusion/include/core_image_align_onnx.h"
 #include "lib_image_fusion/src/core_image_align_onnx.cpp"
 
-// 版本 2: LibTorch 版本 (註解掉以使用 ONNX)
-// #include "lib_image_fusion/include/core_image_align_libtorch.h"
-// #include "lib_image_fusion/src/core_image_align_libtorch.cpp"
-
 #include "utils/include/util_timer.h"
 #include "utils/src/util_timer.cpp"
 
@@ -84,8 +80,8 @@ inline void init_config(nlohmann::json &config)
   config.emplace("output_width", 480);
   config.emplace("output_height", 360);
 
-  config.emplace("pred_width", 480);//480,360
-  config.emplace("pred_height", 360);// 640 480
+  config.emplace("pred_width", 320);//480,360
+  config.emplace("pred_height", 240);// 640 480
 
   config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
@@ -110,7 +106,6 @@ inline void init_config(nlohmann::json &config)
 
   config.emplace("skip_frames", nlohmann::json::object());
 
-  config.emplace("fusion_interpolation", "linear"); // 新增：插值方式 linear/cubic
 }
 
 cv::Mat cropImage(const cv::Mat& sourcePic, int x, int y, int w, int h) {
@@ -300,28 +295,48 @@ cv::Mat readGTHomography(const std::string& gt_path, const std::string& img_name
 }
 
 // 計算 homography 誤差函數
-double calcHomographyEuclideanError(const cv::Mat& H1, const cv::Mat& H2, int w, int h) {
-    if (H1.empty() || H2.empty()) return -1.0;
-    std::vector<cv::Point2f> corners = {
-        cv::Point2f(0, 0),
-        cv::Point2f(w, 0),
-        cv::Point2f(0, h),
-        cv::Point2f(w, h)
-    };
-    std::vector<cv::Point2f> pts1, pts2;
-    cv::perspectiveTransform(corners, pts1, H1);
-    cv::perspectiveTransform(corners, pts2, H2);
-    double err = 0.0;
-    for (int i = 0; i < 4; ++i) {
-        double dx = pts1[i].x - pts2[i].x;
-        double dy = pts1[i].y - pts2[i].y;
-        err += std::sqrt(dx * dx + dy * dy);
+// 計算特徵點MSE誤差函數 - 與LibTorch版本完全一致
+double calcFeaturePointMSE(const cv::Mat& homo_pred, const cv::Mat& homo_gt, 
+                          const std::vector<cv::Point2i>& eo_pts) {
+    if (homo_pred.empty() || homo_gt.empty() || eo_pts.empty()) return -1.0;
+    
+    // 將EO特徵點轉換為float格式
+    std::vector<cv::Point2f> eo_pts_f;
+    for (const auto& pt : eo_pts) {
+        eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
     }
-    return err / 4.0;
+    
+    // 1. eo的點 * eo_homo_pred(矩陣) = kpts_pred(轉換後的點)
+    std::vector<cv::Point2f> kpts_pred;
+    cv::perspectiveTransform(eo_pts_f, kpts_pred, homo_pred);
+    
+    // 2. eo的點 * homo_gt(自己建立的gt) = kpts_gt
+    std::vector<cv::Point2f> kpts_gt;
+    cv::perspectiveTransform(eo_pts_f, kpts_gt, homo_gt);
+    
+    // 3. kpts_pred & kpts_gt計算所有特徵點計算距離差(MSE)
+    double total_squared_error = 0.0;
+    int valid_points = 0;
+    
+    for (size_t i = 0; i < kpts_pred.size() && i < kpts_gt.size(); ++i) {
+        double dx = kpts_pred[i].x - kpts_gt[i].x;
+        double dy = kpts_pred[i].y - kpts_gt[i].y;
+        double squared_distance = dx * dx + dy * dy;
+        total_squared_error += squared_distance;
+        valid_points++;
+    }
+    
+    if (valid_points == 0) return -1.0;
+    
+    // 返回MSE (Mean Squared Error)
+    return total_squared_error / valid_points;
 }
 
 int main(int argc, char **argv)
 {
+  // ===== 移除隨機種子設定以與LibTorch保持一致 =====
+  // cv::setRNGSeed(12345);  // 註釋掉以與LibTorch保持一致
+  
   // 新增: 追蹤特徵點座標範圍
   int min_x = INT_MAX, max_x = INT_MIN;
   int min_y = INT_MAX, max_y = INT_MIN;
@@ -402,10 +417,6 @@ int main(int argc, char **argv)
   int fusion_threshold_equalization_high = config["fusion_threshold_equalization_high"];
   int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
   // 新增：插值方式
-  std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
-  bool isUsingCubic = (fusion_interpolation == "cubic");
-  int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
-
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
   float perspective_distance = config["perspective_distance"];
@@ -451,8 +462,54 @@ int main(int argc, char **argv)
     cout << "\tSmooth Alpha: " << smooth_alpha << endl;
   }
 
-  // ----- Start -----
-  for (const auto &file : directory_iterator(input_dir))
+  // ----- 創建共用的模型實例（只初始化一次，包含warm-up） -----
+  std::cout << "\n=== Initializing shared model instances ===" << std::endl;
+  
+  // Create shared instances that will be used for all images
+  auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
+
+  auto image_resizer = core::ImageResizer::create_instance(
+      core::ImageResizer::Param()
+          .set_eo(out_w, out_h)
+          .set_ir(out_w, out_h));
+
+  auto image_fusion = core::ImageFusion::create_instance(
+      core::ImageFusion::Param()
+          .set_shadow(fusion_shadow)
+          .set_edge_border(fusion_edge_border)
+          .set_threshold_equalization_high(fusion_threshold_equalization_high)
+          .set_threshold_equalization_low(fusion_threshold_equalization_low)
+          .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
+
+  auto image_perspective = core::ImagePerspective::create_instance(
+      core::ImagePerspective::Param()
+          .set_check(perspective_check, perspective_accuracy, perspective_distance));
+
+  // =============== 共用的對齊模型實例（只初始化一次，包含warm-up） ===============
+  std::cout << "Creating shared ImageAlign model instance..." << std::endl;
+  auto image_align = core::ImageAlignONNX::create_instance(
+      core::ImageAlignONNX::Param()
+          .set_size(pred_w, pred_h, out_w, out_h)
+          .set_model(device, model_path, pred_mode)
+          .set_bias(0, 0));
+  
+  std::cout << "Model initialization and warm-up completed. Ready to process all images." << std::endl;
+
+  // ----- Start Processing All Files -----
+  // ===== 臨時測試功能：運行1輪所有圖片來測試一致性（之後可以刪除） =====
+  const int test_rounds = 1; // 測試輪數（之後可以刪除這個變數）
+  
+  for (int round = 1; round <= test_rounds; round++) {
+    std::cout << "\n=== Processing Round " << round << "/" << test_rounds << " ===" << std::endl;
+    
+    // 在每輪開始時在CSV中加入分隔符（之後可以刪除這個功能）
+    std::ofstream csv_separator("image_feature_mse_errors.csv", std::ios::app);
+    if (csv_separator.is_open()) {
+      csv_separator << "-------------------------,Round_" << round << ",-------------------------,-------------------------" << std::endl;
+      csv_separator.close();
+    }
+    
+    for (const auto &file : directory_iterator(input_dir))
   {
     // Get file path and name
     string eo_path, ir_path, save_path = output_dir;
@@ -509,44 +566,7 @@ int main(int argc, char **argv)
       ir_w = ir.cols, ir_h = ir.rows;
     }
 
-    // Create instance
-    auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
-
-    auto image_resizer = core::ImageResizer::create_instance(
-        core::ImageResizer::Param()
-            .set_eo(out_w, out_h)
-            .set_ir(out_w, out_h));
-
-    auto image_fusion = core::ImageFusion::create_instance(
-        core::ImageFusion::Param()
-            .set_shadow(fusion_shadow)
-            .set_edge_border(fusion_edge_border)  // 直接在這裡設置較大的值
-            .set_threshold_equalization_high(fusion_threshold_equalization_high)
-            .set_threshold_equalization_low(fusion_threshold_equalization_low)
-            .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
-
-    auto image_perspective = core::ImagePerspective::create_instance(
-        core::ImagePerspective::Param()
-            .set_check(perspective_check, perspective_accuracy, perspective_distance));
-
-    // =============== 選擇版本：註解掉不需要的版本 ===============
-    // 版本 1: ONNX 版本
-    
-    auto image_align = core::ImageAlignONNX::create_instance(
-        core::ImageAlignONNX::Param()
-            .set_size(pred_w, pred_h, out_w, out_h)
-            .set_model(device, model_path, pred_mode)  // 加入 pred_mode 參數
-            .set_bias(0, 0));
-    
-
-    // 版本 2: LibTorch 版本
-    // auto image_align = core::ImageAlign::create_instance(
-    //     core::ImageAlign::Param()
-    //         .set_size(pred_w, pred_h, out_w, out_h)
-    //         .set_net(device, model_path, pred_mode)
-    //         .set_distance(align_distance_line, align_distance_last, 20)
-    //         .set_angle(align_angle_mean, align_angle_sort)
-    //         .set_bias(0, 0));
+    // =============== 使用已經初始化的共用模型實例 ===============
 
     // 開始計時
     auto timer_base = core::Timer("All");
@@ -574,10 +594,6 @@ int main(int argc, char **argv)
 
     while (1)
     {
-      // int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
-      // 直接強制使用 linear
-      int interp = cv::INTER_LINEAR;
-
       if (isVideo)
       {
         ir_cap.read(ir);
@@ -607,30 +623,44 @@ int main(int argc, char **argv)
         image_align->set_current_image_name(img_name);
         
         // 圖片裁剪
+        // 1. 讀取eo,ir (已完成)
+        // 2. eo裁切並resize320240,ir resize320240
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
-        // resize
+        // resize到320x240
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, interp);
-        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, interp);
-        // 轉灰階
+        cv::resize(eo, eo_resized, cv::Size(320, 240));
+        cv::resize(ir, ir_resized, cv::Size(320, 240));
+        
+        // 3. 兩張圖片經過gray並擴增到3channel
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
-        // 單次model對齊
+        
+        // 擴增到3通道 (雖然模型只用單通道，但為了流程一致性)
+        // cv::Mat gray_eo, gray_ir;
+        // cv::cvtColor(gray_eo, gray_eo, cv::COLOR_GRAY2BGR);
+        // cv::cvtColor(gray_ir, gray_ir, cv::COLOR_GRAY2BGR);
+        
+        // 4. 兩張圖片給model做預測
+        // 5. model預測出kps1,kps2,leng1,leng2
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
+        
+        
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
         
-        // ========== RANSAC 濾除 outlier，提升精度 ==========
+        // 6. kps1和kps2經過ransac(8.0 ,800,0.98)之後得到縮減後的kps1,kps2
+        // 7. kps1和kps2經過homo轉換得到一個H
         cv::Mat refined_H = M_single.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
           std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
+          
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
@@ -645,23 +675,28 @@ int main(int argc, char **argv)
               }
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
+              std::cout << "RANSAC refined: " << eo_pts.size() << " inliers from " << mask.rows << " total points" << std::endl;
             }
           }
         }
         // 使用 refined homography
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        // 使用final_output_size進行後續處理
+        cv::Mat eo_final, ir_final;
+        cv::resize(eo_resized, eo_final, cv::Size(out_w, out_h));
+        cv::resize(ir_resized, ir_final, cv::Size(out_w, out_h));
         
         // ========== 圖片模式下組合顯示 ==========
         // 準備 temp_pair：左邊IR，右邊EO經過homo變換
         cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
-        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        ir_final.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
         
         // EO經過homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp);
+          cv::warpPerspective(eo_final, eo_warped, M, cv::Size(out_w, out_h));
         } else {
-          eo_warped = eo_resized.clone();
+          eo_warped = eo_final.clone();
         }
         eo_warped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
@@ -670,10 +705,10 @@ int main(int argc, char **argv)
         // warp edge
         cv::Mat edge_warped = edge.clone();
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
+          cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h));
         }
         // 融合
-        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
+        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_final);
         // 組合顯示
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -686,44 +721,45 @@ int main(int argc, char **argv)
           std::cout << "Saved fusion result to: " << save_path + ".jpg" << std::endl;
         }
         
-        // CSV 誤差分析：計算當前插值方法的 homography 誤差
-        std::cout << "\n=== Generating CSV for single image ===" << std::endl;
+        // 8. kps1使用H得到eo_pred_H,kps1使用gt_H得到eo_gt_H，計算兩個所有的特徵點用相同位置對應對方的一個特徵點並計算mse誤差
+        std::cout << "\n=== Computing Feature Point MSE Error ===" << std::endl;
         std::cout << "EO Path: " << eo_path << std::endl;
         std::cout << "IR Path: " << ir_path << std::endl;
         
         // 讀取 GT homography（使用之前提取的 img_name）
         cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
         
-        if (!gt_homo.empty()) {
-          // 使用當前config指定的插值方法和已計算的homography
-          std::string current_interp_name = isUsingCubic ? "cubic" : "linear";
-          std::cout << "  Using " << current_interp_name << " interpolation (from config)..." << std::endl;
-          
+        if (!gt_homo.empty() && !eo_pts.empty()) {
           // 直接使用已經計算出的 homography M
           cv::Mat final_M = M.empty() ? cv::Mat::eye(3, 3, CV_64F) : M;
           
-          // 計算與 GT 的誤差
-          double euclidean_error = calcHomographyEuclideanError(final_M, gt_homo, out_w, out_h);
+          // 計算特徵點MSE誤差 (與LibTorch版本完全一致)
+          double feature_mse_error = calcFeaturePointMSE(final_M, gt_homo, eo_pts);
           
           // 寫入 CSV
-          std::string csv_filename = "image_homo_errors.csv";
+          std::string csv_filename = "image_feature_mse_errors.csv";
           std::ofstream csv_file;
           bool file_exists = std::filesystem::exists(csv_filename);
           csv_file.open(csv_filename, std::ios::app);
           
           if (!file_exists) {
-            csv_file << "Image_Name,Image_Size,Is_Cubic,Euclidean_Error\n";
+            csv_file << "Image_Name,Image_Size,Feature_Points,MSE_Error\n";
           }
           
-          std::string is_cubic = isUsingCubic ? "Yes" : "No";
-          std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << img_name << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
+          std::string size_str = "320*240";  // 使用模型預測尺寸
+          csv_file << img_name << "," << size_str << "," << eo_pts.size() << "," << feature_mse_error << "\n";
           csv_file.close();
           
-          std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
-          std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
+          std::cout << "    Feature Point MSE Error: " << feature_mse_error << " px^2" << std::endl;
+          std::cout << "    Used " << eo_pts.size() << " feature points" << std::endl;
+          std::cout << "CSV result saved to image_feature_mse_errors.csv" << std::endl;
         } else {
-          std::cout << "GT homography not found for image: " << img_name << std::endl;
+          if (gt_homo.empty()) {
+            std::cout << "GT homography not found for image: " << img_name << std::endl;
+          }
+          if (eo_pts.empty()) {
+            std::cout << "No feature points found for MSE calculation" << std::endl;
+          }
         }
         
         // int key = waitKey(0); // 註解掉以避免GUI錯誤
@@ -746,8 +782,8 @@ int main(int argc, char **argv)
       // Resize圖像
       {
         timer_resize.start();
-        cv::resize(ir, img_ir, cv::Size(out_w, out_h), 0, 0, interp);
-        cv::resize(eo, img_eo, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(ir, img_ir, cv::Size(out_w, out_h));
+        cv::resize(eo, img_eo, cv::Size(out_w, out_h));
         timer_resize.stop();
       }
       
@@ -781,6 +817,10 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
+          
+          // 移除隨機種子設定以與LibTorch保持一致
+          // cv::setRNGSeed(12345);  // 註釋掉以與LibTorch保持一致
+          
           cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
@@ -858,18 +898,18 @@ int main(int argc, char **argv)
         // 對EO進行homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h), interp);
+          cv::warpPerspective(img_eo, eo_warped, M, cv::Size(out_w, out_h));
         } else {
           eo_warped = img_eo.clone();
         }
         
         // 新增：將eo_warped放大到與ir相同尺寸（而不是out_w x out_h）
         cv::Mat eo_warped_fullsize;
-        cv::resize(eo_warped, eo_warped_fullsize, cv::Size(ir.cols, ir.rows), 0, 0, interp);
+        cv::resize(eo_warped, eo_warped_fullsize, cv::Size(ir.cols, ir.rows));
         
         // 將放大後的eo_warped再resize回輸出尺寸放到temp_pair中間
         cv::Mat eo_warped_resized;
-        cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h));
         eo_warped_resized.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
         // 參考main0712.cpp的畫點劃線方式
@@ -910,7 +950,7 @@ int main(int argc, char **argv)
       Mat edge_warped = edge.clone();
       if (!M.empty() && cv::determinant(M) > 1e-6) {
         timer_perspective.start();
-        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
+        cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h));
         timer_perspective.stop();
       }
       {
@@ -923,10 +963,10 @@ int main(int argc, char **argv)
       Mat img;
       cv::Size target_size(out_w, out_h);
       if (temp_pair.size() != cv::Size(out_w * 2, out_h)) {
-        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h), 0, 0, interp);
+        cv::resize(temp_pair, temp_pair, cv::Size(out_w * 2, out_h));
       }
       if (img_combined.size() != target_size) {
-        cv::resize(img_combined, img_combined, target_size, 0, 0, interp);
+        cv::resize(img_combined, img_combined, target_size);
       }
       img = cv::Mat(out_h, out_w * 3, CV_8UC3);
       temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -974,4 +1014,8 @@ int main(int argc, char **argv)
 
     // return 0;
   }
+  
+  // ===== 結束測試輪數迴圈（之後可以刪除） =====
+  }
+  std::cout << "\n=== Completed all " << test_rounds << " test rounds ===" << std::endl;
 }

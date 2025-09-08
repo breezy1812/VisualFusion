@@ -68,11 +68,11 @@ class SemLA_Reg(nn.Module):
 
         # Flatten
         # feat_sa_ir_flatten = rearrange(feat_sa_ir, "n c h w -> n c (h w)")
-        feat_sa_ir_flatten = n_c_h_w_2_n_c_hw(feat_sa_ir).to(dtype=self.fp)
+        feat_sa_ir_flatten = n_c_h_w_2_n_c_hw(feat_sa_ir)
         # feat_reg_vi_flatten_ = rearrange(feat_reg_vi, "n c h w -> n (h w) c")
-        feat_reg_vi_flatten_ = n_c_h_w_2_n_hw_c(feat_reg_vi).to(dtype=self.fp)
+        feat_reg_vi_flatten_ = n_c_h_w_2_n_hw_c(feat_reg_vi)
         # feat_reg_ir_flatten = rearrange(feat_reg_ir, "n c h w -> n (h w) c")
-        feat_reg_ir_flatten = n_c_h_w_2_n_hw_c(feat_reg_ir).to(dtype=self.fp)
+        feat_reg_ir_flatten = n_c_h_w_2_n_hw_c(feat_reg_ir)
 
         # Feature Similarity Calculation
         feat_reg_vi_flatten = (
@@ -171,7 +171,7 @@ class SemanticStructureRepresentation(nn.Module):
         super(SemanticStructureRepresentation, self).__init__()
         self.grid_embedding = JConv(2, 256)
         self.semantic_embedding = JConv(256, 256)
-        self.attention = StructureAttention(256, 8, fp)
+        self.attention = StructureAttention(256, 8)
         self.device = device
         self.fp = fp
 
@@ -183,16 +183,10 @@ class SemanticStructureRepresentation(nn.Module):
         ys = torch.linspace(0, feat_w - 1, feat_w)
         xs = xs / (feat_h - 1)
         ys = ys / (feat_w - 1)
-        grid = (
-            # trace modify
-            # torch.stack(torch.meshgrid(xs, ys), dim=-1)
-            torch.stack(torch.meshgrid(xs, ys, indexing='ij'), dim=-1)
-            .unsqueeze(0)
-            # trace modify
-            # .repeat(int(feat_sa_vi.shape[0]), 1, 1, 1)
-            .repeat(feat_sa_vi.shape[0], 1, 1, 1)
-            .to(device=self.device, dtype=self.fp)
-        )
+
+        grid = torch.stack(torch.meshgrid(xs, ys, indexing='ij'), dim=-1)
+        grid = grid.unsqueeze(0).repeat(feat_sa_vi.shape[0], 1, 1, 1).to(self.device, dtype=self.fp)
+
         h = grid.shape[1]
         w = grid.shape[2]
         # grid = rearrange(grid, "n h w c -> n c h w")

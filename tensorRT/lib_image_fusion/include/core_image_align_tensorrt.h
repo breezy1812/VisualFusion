@@ -10,8 +10,9 @@ namespace core {
 class ImageAlignTensorRT {
 public:
     struct Param {
-        int input_w = 320;
-        int input_h = 240;
+        // CORRECTED: 使用與LibTorch版本完全一致的參數名稱
+        int pred_width = 320;    // 與LibTorch一致：pred_width
+        int pred_height = 240;   // 與LibTorch一致：pred_height
         int output_w = 320;
         int output_h = 240;
         float out_width_scale = 1.0f;
@@ -21,11 +22,13 @@ public:
         std::string engine_path;
         std::string pred_mode = "fp32";  // 添加 pred_mode 參數，預設為 fp32
         std::string image_name = "";     // 添加圖片名稱參數
-        Param& set_size(int iw, int ih, int ow, int oh) {
-            input_w = iw; input_h = ih; output_w = ow; output_h = oh;
-            // 自動計算縮放參數，與LibTorch版本保持一致
-            out_width_scale = ow / (float)iw;
-            out_height_scale = oh / (float)ih;
+        
+        // CORRECTED: 與LibTorch版本完全一致的set_size邏輯
+        Param& set_size(int pw, int ph, int ow, int oh) {
+            pred_width = pw; pred_height = ph; output_w = ow; output_h = oh;
+            // 與LibTorch版本保持一致的縮放計算：輸出尺寸/預測尺寸
+            out_width_scale = ow / (float)pw;
+            out_height_scale = oh / (float)ph;
             return *this;
         }
         Param& set_scale_and_bias(float scale_w, float scale_h, float bx, float by) {

@@ -10,6 +10,7 @@ PyTorch to TensorRT Conversion Script (支援 FP16)
 Usage:
     python export_onnx2tensorRT.py --fp16  # 啟用 FP16 模式
     python export_onnx2tensorRT.py         # 使用 FP32 模式
+    python export_onnx2tensorRT.py --fp16 --opset 12
 """
 
 import tensorrt as trt

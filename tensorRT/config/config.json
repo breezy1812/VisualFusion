@@ -5,7 +5,7 @@
 
     "device": "cuda",
     "pred_mode": "fp16",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trtModel/trt_semla_fp16_op12.engine",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/trt_semla_fp16_op12.engine",
 
     "VideoCut":true,
     "Vcut_x": 870,
@@ -33,7 +33,6 @@
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
-    "fusion_interpolation":"cubic",
 
     "perspective_check": true,
     "perspective_distance": 10,

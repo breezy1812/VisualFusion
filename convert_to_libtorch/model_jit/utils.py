@@ -101,8 +101,8 @@ class DWT_2D(nn.Module):
     def __init__(self, wave, fp=torch.float32):
         super(DWT_2D, self).__init__()
         w = pywt.Wavelet(wave)
-        dec_hi = torch.Tensor(w.dec_hi[::-1])
-        dec_lo = torch.Tensor(w.dec_lo[::-1])
+        dec_hi = torch.tensor(w.dec_hi[::-1], dtype=fp)
+        dec_lo = torch.tensor(w.dec_lo[::-1], dtype=fp)
 
         w_ll = dec_lo.unsqueeze(0) * dec_lo.unsqueeze(1)
         w_lh = dec_lo.unsqueeze(0) * dec_hi.unsqueeze(1)
@@ -114,10 +114,10 @@ class DWT_2D(nn.Module):
         self.register_buffer("w_hl", w_hl.unsqueeze(0).unsqueeze(0))
         self.register_buffer("w_hh", w_hh.unsqueeze(0).unsqueeze(0))
 
-        self.w_ll = self.w_ll.to(dtype=fp)
-        self.w_lh = self.w_lh.to(dtype=fp)
-        self.w_hl = self.w_hl.to(dtype=fp)
-        self.w_hh = self.w_hh.to(dtype=fp)
+        self.w_ll = self.w_ll
+        self.w_lh = self.w_lh
+        self.w_hl = self.w_hl
+        self.w_hh = self.w_hh
 
     def forward(self, x):
         x = x.contiguous()
@@ -157,14 +157,14 @@ class MLP2(nn.Module):
 
 class StructureAttention(nn.Module):
     # This class is implemented by [LoFTR](https://github.com/zju3dv/LoFTR).
-    def __init__(self, d_model, nhead, fp=torch.float32):
+    def __init__(self, d_model, nhead):
         super(StructureAttention, self).__init__()
         self.dim = d_model // nhead
         self.nhead = nhead
         self.q_proj = nn.Linear(d_model, d_model, bias=False)
         self.k_proj = nn.Linear(d_model, d_model, bias=False)
         self.v_proj = nn.Linear(d_model, d_model, bias=False)
-        self.attention = LinearAttention(fp=fp)
+        self.attention = LinearAttention()
         self.merge = nn.Linear(d_model, d_model, bias=False)
 
         # feed-forward network
@@ -207,22 +207,18 @@ def elu_feature_map(x):
 
 
 class LinearAttention(nn.Module):
-    def __init__(self, eps=1e-6, fp=torch.float32):
+    def __init__(self, eps=1e-6):
         super().__init__()
         self.feature_map = elu_feature_map
         self.eps = eps
-        self.fp = fp
 
     def forward(self, queries, keys, values):
-        Q = self.feature_map(queries).to(dtype=self.fp)
-        K = self.feature_map(keys).to(dtype=self.fp)
+        Q = self.feature_map(queries)
+        K = self.feature_map(keys)
         v_length = values.size(1)
         values = values / v_length  # prevent fp16 overflow
         KV = torch.einsum("nshd,nshv->nhdv", K, values)  # (S,D)' @ S,V
         Z = 1 / (torch.einsum("nlhd,nhd->nlh", Q, K.sum(dim=1)) + self.eps)
-
-        Z = Z.to(dtype=self.fp)
-        KV = KV.to(dtype=self.fp)
 
         # queried_values = torch.einsum("nlhd,nhdv,nlh->nlhv", Q, KV, Z) * v_length
         

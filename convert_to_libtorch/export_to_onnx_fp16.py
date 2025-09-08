@@ -8,10 +8,10 @@ print("=== SemLA ONNX FP16 轉換腳本 (直接導出) ===")
 
 # 使用CUDA來獲得最佳性能
 device = torch.device("cuda")
+fpMode = torch.float16
 print(f"使用設備: {device}")
 
 # 直接以 FP16 載入並轉換模型
-fpMode = torch.float16
 print("正在載入並轉換模型為 FP16...")
 matcher = SemLA(device=device, fp=fpMode)
 matcher.load_state_dict(torch.load(f"./reg.ckpt", map_location=device), strict=False)
@@ -26,12 +26,12 @@ torch_input_1 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 torch_input_2 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 
 # 確保輸出目錄存在
-output_dir = "../Onnx/model/onnxModel"
+output_dir = "../Onnx/model"
 os.makedirs(output_dir, exist_ok=True)
 
 # 直接導出FP16 ONNX模型
 # 使用一個新名稱以避免與舊模型混淆
-fp16_output_path = f"{output_dir}/zfp16_op12.onnx"
+fp16_output_path = f"{output_dir}/zfp16_op12_backup.onnx"
 
 print(f"直接轉換為FP16 ONNX模型...")
 print(f"最終路徑: {fp16_output_path}")

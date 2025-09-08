@@ -95,7 +95,11 @@ public:
         if (cudaStreamCreate(&stream_) != cudaSuccess) {
             throw std::runtime_error("Failed to create CUDA stream.");
         }
+        
         std::cout << "debug: ImageAlignTensorRT initialized successfully with pred_mode=" << param_.pred_mode << std::endl;
+        
+        // 執行 warmup
+        warm_up();
     }
 
     // Destructor
@@ -109,6 +113,27 @@ public:
         if (engine_) engine_->destroy();
         if (runtime_) runtime_->destroy();
         std::cout << "debug: Resources released." << std::endl;
+    }
+
+    // Warmup function - 與LibTorch版本一致
+    void warm_up() {
+        std::cout<<"******************************"<<std::endl;
+        std::cout << "debug: TensorRT Warm up..." << std::endl;
+        std::cout<<"******************************"<<std::endl;
+
+        cv::Mat eo = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 255;
+        cv::Mat ir = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 255;
+
+        const auto t0 = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < 10; i++) {
+            std::vector<cv::Point2i> eo_mkpts, ir_mkpts;
+            pred(eo, ir, eo_mkpts, ir_mkpts);
+        }
+
+        const auto elapsed = std::chrono::high_resolution_clock::now() - t0;
+        const double period = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count();
+
+        std::cout << "debug: TensorRT Warm up done in " << std::fixed << std::setprecision(2) << period << " s" << std::endl;
     }
 
     // 更新圖片名稱的方法
@@ -127,8 +152,8 @@ public:
             return;
         }
 
-        // 添加特徵點縮放邏輯，與LibTorch版本保持一致
-        if (param_.out_width_scale - 1 > 1e-6 || param_.out_height_scale - 1 > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0) {
+        // CORRECTED: 與Python代碼完全一致的特徵點縮放條件檢查
+        if (std::abs(param_.out_width_scale - 1.0) > 1e-6 || std::abs(param_.out_height_scale - 1.0) > 1e-6 || param_.bias_x > 0 || param_.bias_y > 0) {
             for (cv::Point2i &pt : eo_pts) {
                 pt.x = pt.x * param_.out_width_scale + param_.bias_x;
                 pt.y = pt.y * param_.out_height_scale + param_.bias_y;
@@ -137,6 +162,11 @@ public:
                 pt.x = pt.x * param_.out_width_scale + param_.bias_x;
                 pt.y = pt.y * param_.out_height_scale + param_.bias_y;
             }
+            std::cout << "debug: Feature point scaling applied (TensorRT): scale=(" << param_.out_width_scale << ", " << param_.out_height_scale 
+                      << "), bias=(" << param_.bias_x << ", " << param_.bias_y << ")" << std::endl;
+        } else {
+            std::cout << "debug: No feature point scaling needed (TensorRT): scale=(" << param_.out_width_scale << ", " << param_.out_height_scale 
+                      << "), bias=(" << param_.bias_x << ", " << param_.bias_y << ")" << std::endl;
         }
 
         // 與LibTorch版本保持一致，不在這裡做RANSAC，只返回特徵點
@@ -149,10 +179,10 @@ public:
     void pred(const cv::Mat& eo, const cv::Mat& ir, std::vector<cv::Point2i>& eo_mkpts, std::vector<cv::Point2i>& ir_mkpts) {
         std::cout << "debug: Starting prediction..." << std::endl;
         
-        // 1. Pre-processing
+        // 1. Pre-processing - 使用默認插值方法
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(param_.input_w, param_.input_h));
-        cv::resize(ir, ir_resized, cv::Size(param_.input_w, param_.input_h));
+        cv::resize(eo, eo_resized, cv::Size(param_.pred_width, param_.pred_height));
+        cv::resize(ir, ir_resized, cv::Size(param_.pred_width, param_.pred_height));
 
         cv::Mat eo_gray, ir_gray;
         
@@ -169,17 +199,28 @@ public:
             ir_gray = ir_resized.clone();
         }
 
+        // CORRECTED: 完全按照Python代碼邏輯進行處理
+        // Python: img0_tensor = torch.from_numpy(eo_pred)[None][None].to(device, dtype=fpMode) / 255.
+        
+        // 1. 確保圖像是uint8格式（對應Python numpy array）
+        cv::Mat eo_uint8, ir_uint8;
+        eo_gray.convertTo(eo_uint8, CV_8U);
+        ir_gray.convertTo(ir_uint8, CV_8U);
+        
         cv::Mat eo_float, ir_float;
         if (param_.pred_mode == "fp16") {
-            // FP16 模式：直接轉換為 FP16 張量格式
-            std::cout << "debug: Using FP16 mode for inference..." << std::endl;
-            eo_gray.convertTo(eo_float, CV_16F, 1.0 / 255.0);  // CV_16F 對應 half precision
-            ir_gray.convertTo(ir_float, CV_16F, 1.0 / 255.0);
+            // 2a. FP16模式：先正規化為FP32再轉FP16（對應Python的dtype轉換）
+            std::cout << "debug: Using FP16 mode for inference (Python-compatible)..." << std::endl;
+            cv::Mat eo_float32, ir_float32;
+            eo_uint8.convertTo(eo_float32, CV_32F, 1.0f / 255.0f);
+            ir_uint8.convertTo(ir_float32, CV_32F, 1.0f / 255.0f);
+            eo_float32.convertTo(eo_float, CV_16F);  // CV_16F 對應 half precision
+            ir_float32.convertTo(ir_float, CV_16F);
         } else {
-            // FP32 模式（預設）
-            std::cout << "debug: Using FP32 mode for inference..." << std::endl;
-            eo_gray.convertTo(eo_float, CV_32F, 1.0 / 255.0);
-            ir_gray.convertTo(ir_float, CV_32F, 1.0 / 255.0);
+            // 2b. FP32模式：直接正規化為FP32
+            std::cout << "debug: Using FP32 mode for inference (Python-compatible)..." << std::endl;
+            eo_uint8.convertTo(eo_float, CV_32F, 1.0f / 255.0f);
+            ir_uint8.convertTo(ir_float, CV_32F, 1.0f / 255.0f);
         }
 
         // HWC to CHW - 根據 pred_mode 決定資料格式
@@ -187,8 +228,8 @@ public:
         
         if (param_.pred_mode == "fp16") {
             // FP16 模式：使用 half precision data
-            std::vector<__half> eo_data_fp16(param_.input_w * param_.input_h);
-            std::vector<__half> ir_data_fp16(param_.input_w * param_.input_h);
+            std::vector<__half> eo_data_fp16(param_.pred_width * param_.pred_height);
+            std::vector<__half> ir_data_fp16(param_.pred_width * param_.pred_height);
             
             // 將 CV_16F 轉換為 __half
             const __half* eo_ptr = reinterpret_cast<const __half*>(eo_float.data);
@@ -197,7 +238,7 @@ public:
             memcpy(eo_data_fp16.data(), eo_ptr, eo_data_fp16.size() * sizeof(__half));
             memcpy(ir_data_fp16.data(), ir_ptr, ir_data_fp16.size() * sizeof(__half));
             
-            std::cout << "debug: Pre-processing complete (FP16). Image size: " << param_.input_w << "x" << param_.input_h << std::endl;
+            std::cout << "debug: Pre-processing complete (FP16). Image size: " << param_.pred_width << "x" << param_.pred_height << std::endl;
 
             // 2. Run Inference with FP16 data
             auto inference_start = std::chrono::high_resolution_clock::now();
@@ -211,7 +252,10 @@ public:
             
             // 記錄到 CSV
             if (csv_file_.is_open()) {
-                std::string image_name = current_image_name_.empty() ? "unknown" : current_image_name_;
+                std::string image_name = current_image_name_.empty() ? "----": current_image_name_;
+                if(image_name=="----"){
+                    return;
+                }
                 csv_file_ << image_name << "," << std::fixed << std::setprecision(6) << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
                 csv_file_.flush();
             }
@@ -224,14 +268,14 @@ public:
             }
         } else {
             // FP32 模式
-            std::vector<float> eo_data(param_.input_w * param_.input_h);
-            std::vector<float> ir_data(param_.input_w * param_.input_h);
+            std::vector<float> eo_data(param_.pred_width * param_.pred_height);
+            std::vector<float> ir_data(param_.pred_width * param_.pred_height);
             
             // Assuming the model wants [1, C, H, W] where C=1
             memcpy(eo_data.data(), eo_float.data, eo_data.size() * sizeof(float));
             memcpy(ir_data.data(), ir_float.data, ir_data.size() * sizeof(float));
             
-            std::cout << "debug: Pre-processing complete (FP32). Image size: " << param_.input_w << "x" << param_.input_h << std::endl;
+            std::cout << "debug: Pre-processing complete (FP32). Image size: " << param_.pred_width << "x" << param_.pred_height << std::endl;
 
             // 2. Run Inference
             std::cout << "debug: [pred] Before runInference. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << std::endl;
@@ -249,7 +293,10 @@ public:
             
             // 記錄到 CSV
             if (csv_file_.is_open()) {
-                std::string image_name = current_image_name_.empty() ? "unknown" : current_image_name_;
+                std::string image_name = current_image_name_.empty() ? "----" : current_image_name_;
+                if(image_name=="----"){
+                    return;
+                }
                 csv_file_ << image_name << "," << std::fixed << std::setprecision(6) << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
                 csv_file_.flush();
             }
@@ -425,12 +472,13 @@ public:
         std::cout << "debug: [runInference] Raw leng1=" << leng1  << std::endl;
         std::cout << "debug: [runInference] Parsing up to " << leng1 << " keypoints..." << std::endl;
         for (int i = 0; i < leng1; ++i) {
-            int x_eo = static_cast<int>(eo_kps_raw[i * num_coords + 0]);
-            int y_eo = static_cast<int>(eo_kps_raw[i * num_coords + 1]);
+            // 使用round而非直接轉換，提高精度（與LibTorch版本一致）
+            int x_eo = static_cast<int>(std::round(eo_kps_raw[i * num_coords + 0]));
+            int y_eo = static_cast<int>(std::round(eo_kps_raw[i * num_coords + 1]));
             eo_kps.emplace_back(x_eo, y_eo);
 
-            int x_ir = static_cast<int>(ir_kps_raw[i * num_coords + 0]);
-            int y_ir = static_cast<int>(ir_kps_raw[i * num_coords + 1]);
+            int x_ir = static_cast<int>(std::round(ir_kps_raw[i * num_coords + 0]));
+            int y_ir = static_cast<int>(std::round(ir_kps_raw[i * num_coords + 1]));
             ir_kps.emplace_back(x_ir, y_ir);
         }
         
@@ -578,12 +626,13 @@ public:
         std::cout << "debug: [runInferenceFP16] Raw leng1=" << leng1 << std::endl;
         std::cout << "debug: [runInferenceFP16] Parsing up to " << leng1 << " keypoints..." << std::endl;
         for (int i = 0; i < leng1; ++i) {
-            int x_eo = static_cast<int>(eo_kps_raw[i * num_coords + 0]);
-            int y_eo = static_cast<int>(eo_kps_raw[i * num_coords + 1]);
+            // 使用round而非直接轉換，提高精度（與LibTorch版本一致）
+            int x_eo = static_cast<int>(std::round(eo_kps_raw[i * num_coords + 0]));
+            int y_eo = static_cast<int>(std::round(eo_kps_raw[i * num_coords + 1]));
             eo_kps.emplace_back(x_eo, y_eo);
 
-            int x_ir = static_cast<int>(ir_kps_raw[i * num_coords + 0]);
-            int y_ir = static_cast<int>(ir_kps_raw[i * num_coords + 1]);
+            int x_ir = static_cast<int>(std::round(ir_kps_raw[i * num_coords + 0]));
+            int y_ir = static_cast<int>(std::round(ir_kps_raw[i * num_coords + 1]));
             ir_kps.emplace_back(x_ir, y_ir);
         }
         

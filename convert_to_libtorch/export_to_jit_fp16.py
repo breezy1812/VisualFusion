@@ -15,6 +15,7 @@ print("=== SemLA ONNX FP16 轉換腳本 (直接導出) ===")
 
 # 使用CUDA來獲得最佳性能
 device = torch.device("cuda")
+# device = torch.device("cpu")
 print(f"使用設備: {device}")
 
 # 直接以 FP16 載入並轉換模型
@@ -27,4 +28,5 @@ matcher = matcher.eval().to(device, dtype=fpMode)
 
 matcher = torch.jit.script(matcher)
 
-torch.jit.save(matcher, f"SemLA_jit_{device}_fp16.zip")
+torch.jit.save(matcher, f"/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_jit_{device}_fp16.zip")
+print('done')
