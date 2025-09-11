@@ -20,7 +20,7 @@
 
 using namespace cv;
 using namespace std;
-using namespace filesystem;
+using namespace std::filesystem;
 using json = nlohmann::json;
 
 // show error message
@@ -205,7 +205,9 @@ public:
             return true;
         }
         
-        auto [trans_diff, rot_diff] = calculateHomographyDifference(previous_homo, new_homo);
+        auto diff = calculateHomographyDifference(previous_homo, new_homo);
+        double trans_diff = diff.first;
+        double rot_diff = diff.second;
         
         // 如果差異太大，不更新
         if (trans_diff > max_translation_diff || rot_diff > max_rotation_diff) {
@@ -281,41 +283,25 @@ cv::Mat readGTHomography(const std::string& gt_path, const std::string& img_name
   }
 }
 
-// 計算特徵點MSE誤差函數 - 與LibTorch版本完全一致
-double calcFeaturePointMSE(const cv::Mat& homo_pred, const cv::Mat& homo_gt, 
-                          const std::vector<cv::Point2i>& eo_pts) {
-    if (homo_pred.empty() || homo_gt.empty() || eo_pts.empty()) return -1.0;
-    
-    // 將EO特徵點轉換為float格式
-    std::vector<cv::Point2f> eo_pts_f;
-    for (const auto& pt : eo_pts) {
-        eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+// 計算 homography 誤差函數
+double calcHomographyEuclideanError(const cv::Mat& H1, const cv::Mat& H2, int w, int h) {
+    if (H1.empty() || H2.empty()) return -1.0;
+    std::vector<cv::Point2f> corners = {
+        cv::Point2f(0, 0),
+        cv::Point2f(w, 0),
+        cv::Point2f(0, h),
+        cv::Point2f(w, h)
+    };
+    std::vector<cv::Point2f> pts1, pts2;
+    cv::perspectiveTransform(corners, pts1, H1);
+    cv::perspectiveTransform(corners, pts2, H2);
+    double err = 0.0;
+    for (int i = 0; i < 4; ++i) {
+        double dx = pts1[i].x - pts2[i].x;
+        double dy = pts1[i].y - pts2[i].y;
+        err += std::sqrt(dx * dx + dy * dy);
     }
-    
-    // 1. eo的點 * eo_homo_pred(矩陣) = kpts_pred(轉換後的點)
-    std::vector<cv::Point2f> kpts_pred;
-    cv::perspectiveTransform(eo_pts_f, kpts_pred, homo_pred);
-    
-    // 2. eo的點 * homo_gt(自己建立的gt) = kpts_gt
-    std::vector<cv::Point2f> kpts_gt;
-    cv::perspectiveTransform(eo_pts_f, kpts_gt, homo_gt);
-    
-    // 3. kpts_pred & kpts_gt計算所有特徵點計算距離差(MSE)
-    double total_squared_error = 0.0;
-    int valid_points = 0;
-    
-    for (size_t i = 0; i < kpts_pred.size() && i < kpts_gt.size(); ++i) {
-        double dx = kpts_pred[i].x - kpts_gt[i].x;
-        double dy = kpts_pred[i].y - kpts_gt[i].y;
-        double squared_distance = dx * dx + dy * dy;
-        total_squared_error += squared_distance;
-        valid_points++;
-    }
-    
-    if (valid_points == 0) return -1.0;
-    
-    // 返回MSE (Mean Squared Error)
-    return total_squared_error / valid_points;
+    return err / 4.0;
 }
 
 int main(int argc, char **argv)
@@ -421,7 +407,7 @@ int main(int argc, char **argv)
   double smooth_alpha = config["smooth_alpha"];
 
   // GT homography 路徑
-  std::string gt_homo_base_path = "/name/HomoLabels320240/Version3";
+  std::string gt_homo_base_path = "/circ330/HomoLabels320240/Version3";
 
   // show config
   {
@@ -532,7 +518,8 @@ int main(int argc, char **argv)
     auto image_align = core::ImageAlignTensorRT::create_instance(
         core::ImageAlignTensorRT::Param()
             .set_size(pred_w, pred_h, out_w, out_h)
-            .set_engine(model_path));
+            .set_engine(model_path)
+            .set_pred_mode(pred_mode));  // 加入 pred_mode 參數
     
 
     // 開始計時
@@ -579,29 +566,37 @@ int main(int argc, char **argv)
       {
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
-        // 1. 讀取eo,ir (已完成)
-        // 2. eo裁切並resize320240,ir resize320240
+        // 圖片裁剪
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
-        // resize到320x240
+        // resize
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(320, 240), 0, 0, interp);
-        cv::resize(ir, ir_resized, cv::Size(320, 240), 0, 0, interp);
-        
-        // 3. 轉灰階 (不擴增到3channel)
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, interp);
+        // 轉灰階
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
+        // 單次model對齊
         
-        // 4. 兩張圖片給model做預測
-        // 5. model預測出kps1,kps2,leng1,leng2
+        // 設定當前圖片名稱用於 CSV 記錄
+        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos = img_name.find_last_of(".");
+        if (dot_pos != std::string::npos) {
+          img_name = img_name.substr(0, dot_pos);
+        }
+        size_t eo_pos = img_name.find("_EO");
+        if (eo_pos != std::string::npos) {
+          img_name = img_name.substr(0, eo_pos);
+        }
+        image_align->set_current_image_name(img_name);
+        
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
-        image_align->align(eo_resized, ir_resized, eo_pts, ir_pts, M_single);
+        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
         
-        // 6. kps1和kps2經過ransac(8.0 ,800,0.98)之後得到縮減後的kps1,kps2
-        // 7. kps1和kps2經過homo轉換得到一個H
+        // ========== RANSAC 濾除 outlier，提升精度 ==========
         cv::Mat refined_H = M_single.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
           std::vector<cv::Point2f> eo_pts_f, ir_pts_f;
@@ -623,26 +618,23 @@ int main(int argc, char **argv)
               }
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
+            }
+          }
         }
         // 使用 refined homography
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
         
-        // 使用final_output_size進行後續處理
-        cv::Mat eo_final, ir_final;
-        cv::resize(eo_resized, eo_final, cv::Size(out_w, out_h), 0, 0, interp);
-        cv::resize(ir_resized, ir_final, cv::Size(out_w, out_h), 0, 0, interp);
-        
         // ========== 圖片模式下組合顯示 ==========
         // 準備 temp_pair：左邊IR，右邊EO經過homo變換
         cv::Mat temp_pair = cv::Mat::zeros(out_h, out_w * 2, CV_8UC3);
-        ir_final.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
+        ir_resized.copyTo(temp_pair(cv::Rect(0, 0, out_w, out_h)));
         
         // EO經過homography變換
         cv::Mat eo_warped;
         if (!M.empty() && cv::determinant(M) > 1e-6) {
-          cv::warpPerspective(eo_final, eo_warped, M, cv::Size(out_w, out_h), interp);
+          cv::warpPerspective(eo_resized, eo_warped, M, cv::Size(out_w, out_h), interp);
         } else {
-          eo_warped = eo_final.clone();
+          eo_warped = eo_resized.clone();
         }
         eo_warped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
@@ -654,7 +646,7 @@ int main(int argc, char **argv)
           cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h), interp);
         }
         // 融合
-        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_final);
+        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
         // 組合顯示
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -667,56 +659,55 @@ int main(int argc, char **argv)
           std::cout << "Saved fusion result to: " << save_path + ".jpg" << std::endl;
         }
         
-        // 8. kps1使用H得到eo_pred_H,kps1使用gt_H得到eo_gt_H，計算兩個所有的特徵點用相同位置對應對方的一個特徵點並計算mse誤差
-        std::cout << "\n=== Computing Feature Point MSE Error ===" << std::endl;
+        // CSV 誤差分析：計算當前插值方法的 homography 誤差
+        std::cout << "\n=== Generating CSV for single image ===" << std::endl;
         std::cout << "EO Path: " << eo_path << std::endl;
         std::cout << "IR Path: " << ir_path << std::endl;
         
         // 提取圖片名稱
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
+        std::string img_name_csv = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        size_t dot_pos_csv = img_name_csv.find_last_of(".");
+        if (dot_pos_csv != std::string::npos) {
+          img_name_csv = img_name_csv.substr(0, dot_pos_csv);
         }
-        size_t eo_pos = img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
+        size_t eo_pos_csv = img_name_csv.find("_EO");
+        if (eo_pos_csv != std::string::npos) {
+          img_name_csv = img_name_csv.substr(0, eo_pos_csv);
         }
         
         // 讀取 GT homography
-        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name);
+        cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name_csv);
         
-        if (!gt_homo.empty() && !eo_pts.empty()) {
+        if (!gt_homo.empty()) {
+          // 使用當前config指定的插值方法和已計算的homography
+          std::string current_interp_name = isUsingCubic ? "cubic" : "linear";
+          std::cout << "  Using " << current_interp_name << " interpolation (from config)..." << std::endl;
+          
           // 直接使用已經計算出的 homography M
           cv::Mat final_M = M.empty() ? cv::Mat::eye(3, 3, CV_64F) : M;
           
-          // 計算特徵點MSE誤差 (與LibTorch版本完全一致)
-          double feature_mse_error = calcFeaturePointMSE(final_M, gt_homo, eo_pts);
+          // 計算與 GT 的誤差
+          double euclidean_error = calcHomographyEuclideanError(final_M, gt_homo, out_w, out_h);
           
           // 寫入 CSV
-          std::string csv_filename = "tensorrt_feature_mse_errors.csv";
+          std::string csv_filename = "image_homo_errors.csv";
           std::ofstream csv_file;
           bool file_exists = std::filesystem::exists(csv_filename);
           csv_file.open(csv_filename, std::ios::app);
           
           if (!file_exists) {
-            csv_file << "Image_Name,Image_Size,Feature_Points,MSE_Error\n";
+            csv_file << "Image_Name,Image_Size,Is_Cubic,Euclidean_Error\n";
           }
           
-          std::string size_str = "320*240";  // 使用模型預測尺寸
-          csv_file << img_name << "," << size_str << "," << eo_pts.size() << "," << feature_mse_error << "\n";
+          std::string is_cubic = isUsingCubic ? "Yes" : "No";
+          std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
+          csv_file << img_name_csv << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
           csv_file.close();
           
-          std::cout << "    Feature Point MSE Error: " << feature_mse_error << " px^2" << std::endl;
-          std::cout << "    Used " << eo_pts.size() << " feature points" << std::endl;
-          std::cout << "CSV result saved to tensorrt_feature_mse_errors.csv" << std::endl;
+          std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
+          std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
         } else {
-          if (gt_homo.empty()) {
-            std::cout << "GT homography not found for image: " << img_name << std::endl;
-          }
-          if (eo_pts.empty()) {
-            std::cout << "No feature points found for MSE calculation" << std::endl;
-          }
+          std::cout << "GT homography not found for image: " << img_name_csv << std::endl;
         }
         
         // int key = waitKey(0); // 註解掉以避免GUI錯誤
@@ -754,6 +745,10 @@ int main(int argc, char **argv)
       
       // 每50幀計算一次特徵點
       if (cnt % compute_per_frame == 0) {
+        // 設定當前幀名稱用於 CSV 記錄
+        std::string frame_name = "frame_" + std::to_string(cnt);
+        image_align->set_current_image_name(frame_name);
+        
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
         image_align->align(img_eo, img_ir, eo_pts, ir_pts, M); // Pass BGR images

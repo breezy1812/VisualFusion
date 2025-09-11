@@ -81,11 +81,11 @@ inline void init_config(nlohmann::json &config)
   config.emplace("Vcut_h", -1); // -1 means no cut, use full image height
   config.emplace("Vcut_w", -1); // -1 means no cut, use full image width
 
-  config.emplace("output_width", 480);
-  config.emplace("output_height", 360);
+  config.emplace("output_width", 320);
+  config.emplace("output_height", 240);
 
-  config.emplace("pred_width", 480);//480,360
-  config.emplace("pred_height", 360);// 640 480
+  config.emplace("pred_width", 320);//480,360
+  config.emplace("pred_height", 240);// 640 480
 
   config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
@@ -475,13 +475,39 @@ int main(int argc, char **argv)
 //         每次推論 kernel 啟動時，thread 排程的順序不是保證 deterministic。
 //         因為 onnx 在執行過程中對於硬體調用能力較差，計算時因為，所以每次推論結果會有機率行出現錯誤（3%~5%）。
 
-// 兩張圖eo ir算eo_homo_pred(矩陣) 
-// 第一章影像的eo的點*eo_homo pred(矩陣) = kpts_pred(轉換後的點)
-// 第一章影像的eo的點*homo_gt(自己建立的gt) = kpts_gt
-// kpts_p & kpts_gt計算所有特徵點計算距離差(MSE)
+  // ----- 創建共用的非模型實例（模型只初始化一次） -----
+  std::cout << "\n=== Initializing shared non-model instances ===" << std::endl;
+  
+  // Create shared instances that will be used for all images (除了模型)
+  auto shared_image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
+  auto shared_image_resizer = core::ImageResizer::create_instance(
+      core::ImageResizer::Param()
+          .set_eo(out_w, out_h)
+          .set_ir(out_w, out_h));
+  auto shared_image_fusion = core::ImageFusion::create_instance(
+      core::ImageFusion::Param()
+          .set_shadow(fusion_shadow)
+          .set_edge_border(fusion_edge_border)
+          .set_threshold_equalization_high(fusion_threshold_equalization_high)
+          .set_threshold_equalization_low(fusion_threshold_equalization_low)
+          .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
+  auto shared_image_perspective = core::ImagePerspective::create_instance(
+      core::ImagePerspective::Param()
+          .set_check(perspective_check, perspective_accuracy, perspective_distance));
+  std::cout << "Non-model instances initialized. Model will be created once." << std::endl;
 
+  // ----- 初始化模型（只執行一次） -----
+  std::cout << "Creating ImageAlign model instance..." << std::endl;
+  auto image_align = core::ImageAlign::create_instance(
+      core::ImageAlign::Param()
+          .set_size(pred_w, pred_h, out_w, out_h)
+          .set_net(device, model_path, pred_mode)
+          .set_distance(align_distance_line, align_distance_last, 20)
+          .set_angle(align_angle_mean, align_angle_sort)
+          .set_bias(0, 0));
+  std::cout << "Model initialization and warm-up completed." << std::endl;
 
-  // ----- Start -----
+  // ----- 處理所有圖片 -----
   for (const auto &file : directory_iterator(input_dir))
   {
     // Get file path and name
@@ -539,35 +565,6 @@ int main(int argc, char **argv)
       ir_w = ir.cols, ir_h = ir.rows;
     }
 
-    // Create instance
-    auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
-
-    auto image_resizer = core::ImageResizer::create_instance(
-        core::ImageResizer::Param()
-            .set_eo(out_w, out_h)
-            .set_ir(out_w, out_h));
-
-    auto image_fusion = core::ImageFusion::create_instance(
-        core::ImageFusion::Param()
-            .set_shadow(fusion_shadow)
-            .set_edge_border(fusion_edge_border)  // 直接在這裡設置較大的值
-            .set_threshold_equalization_high(fusion_threshold_equalization_high)
-            .set_threshold_equalization_low(fusion_threshold_equalization_low)
-            .set_threshold_equalization_zero(fusion_threshold_equalization_zero));
-
-    auto image_perspective = core::ImagePerspective::create_instance(
-        core::ImagePerspective::Param()
-            .set_check(perspective_check, perspective_accuracy, perspective_distance));
-
-    // 版本 2: LibTorch 版本
-    auto image_align = core::ImageAlign::create_instance(
-        core::ImageAlign::Param()
-            .set_size(pred_w, pred_h, out_w, out_h)
-            .set_net(device, model_path, pred_mode)
-            .set_distance(align_distance_line, align_distance_last, 20)
-            .set_angle(align_angle_mean, align_angle_sort)
-            .set_bias(0, 0));
-
     // 開始計時
     auto timer_base = core::Timer("All");
     auto timer_resize = core::Timer("Resize");
@@ -612,10 +609,15 @@ int main(int argc, char **argv)
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
-        // resize (明確指定插值方法與Python版本一致)
+        
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
-        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_LINEAR);
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+        //
+        // cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
+        // cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
+        
+        
         // 轉灰階
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
@@ -631,6 +633,11 @@ int main(int argc, char **argv)
         if (dot_pos != std::string::npos) {
           img_name = img_name.substr(0, dot_pos);
         }
+        // 移除 _EO 後綴（與ONNX版本一致）
+        size_t eo_pos = img_name.find("_EO");
+        if (eo_pos != std::string::npos) {
+          img_name = img_name.substr(0, eo_pos);
+        }
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single, img_name);
         
         // ========== RANSAC 濾除 outlier，提升精度 ==========
@@ -640,10 +647,11 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 3000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
+              refined_H = H;
               // 步驟6: 過濾 inlier 特徵點
               std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
               for (int i = 0; i < mask.rows; i++) {
@@ -653,23 +661,6 @@ int main(int argc, char **argv)
                 }
               }
               
-              // 步驟7: 用篩選後的特徵點重新計算homography
-              if (filtered_eo_pts.size() >= 4) {
-                std::vector<cv::Point2f> filtered_eo_pts_f, filtered_ir_pts_f;
-                for (const auto& pt : filtered_eo_pts) filtered_eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
-                for (const auto& pt : filtered_ir_pts) filtered_ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
-                
-                cv::Mat refined_H_new = cv::findHomography(filtered_eo_pts_f, filtered_ir_pts_f, 0, 0.0);
-                if (!refined_H_new.empty() && cv::determinant(refined_H_new) > 1e-6 && cv::determinant(refined_H_new) < 1e6) {
-                  refined_H = refined_H_new;
-                  std::cout << "用 " << filtered_eo_pts.size() << " 個inlier特徵點重新計算homography成功" << std::endl;
-                } else {
-                  std::cout << "用inlier特徵點重新計算homography失敗，使用RANSAC結果" << std::endl;
-                  refined_H = H;
-                }
-              } else {
-                refined_H = H;
-              }
               
               // 更新特徵點為inliers（用於誤差計算）
               eo_pts = filtered_eo_pts;
@@ -695,14 +686,14 @@ int main(int argc, char **argv)
         eo_warped.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
         // 邊緣檢測
-        cv::Mat edge = image_fusion->edge(gray_eo);
+        cv::Mat edge = shared_image_fusion->edge(gray_eo);
         // warp edge
         cv::Mat edge_warped = edge.clone();
         if (!M.empty() && cv::determinant(M) > 1e-6) {
           cv::warpPerspective(edge, edge_warped, M, cv::Size(out_w, out_h));
         }
         // 融合
-        cv::Mat img_combined = image_fusion->fusion(edge_warped, ir_resized);
+        cv::Mat img_combined = shared_image_fusion->fusion(edge_warped, ir_resized);
         // 組合顯示
         cv::Mat img = cv::Mat(out_h, out_w * 3, CV_8UC3);
         temp_pair.copyTo(img(cv::Rect(0, 0, out_w * 2, out_h)));
@@ -720,12 +711,8 @@ int main(int argc, char **argv)
         std::cout << "EO Path: " << eo_path << std::endl;
         std::cout << "IR Path: " << ir_path << std::endl;
         
-        // 重新使用之前定義的img_name變數，處理CSV用的檔案名稱
-        std::string csv_img_name = img_name;
-        size_t eo_pos = csv_img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          csv_img_name = csv_img_name.substr(0, eo_pos);
-        }
+        // 重新使用之前定義的img_name變數，處理CSV用的檔案名稱（已經去除_EO後綴）
+        std::string csv_img_name = img_name;  // 直接使用已處理的img_name
         
         // 讀取 GT homography
         cv::Mat gt_homo = readGTHomography(gt_homo_base_path, csv_img_name);
@@ -748,7 +735,7 @@ int main(int argc, char **argv)
             csv_file << "Image_Name,Image_Size,Feature_Count,Feature_MSE_Error\n";
           }
           std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << csv_img_name << "," << size_str << "," << eo_pts.size() << "," << feature_mse << "\n";
+          csv_file << csv_img_name << "," << size_str << "," << eo_pts.size() << ",    " << feature_mse << "\n";
           csv_file.close();
           
           std::cout << "    Feature Point MSE Error: " << feature_mse << " px^2" << std::endl;
@@ -940,7 +927,7 @@ int main(int argc, char **argv)
       Mat edge, img_combined;
       {
         timer_edge.start();
-        edge = image_fusion->edge(gray_eo);
+        edge = shared_image_fusion->edge(gray_eo);
         timer_edge.stop();
       }
       // 將EO影像轉換到IR的座標系統，如果有有效的homography矩陣
@@ -952,7 +939,7 @@ int main(int argc, char **argv)
       }
       {
         timer_fusion.start();
-        img_combined = image_fusion->fusion(edge_warped, img_ir);
+        img_combined = shared_image_fusion->fusion(edge_warped, img_ir);
         timer_fusion.stop();
       }
       timer_base.stop();
@@ -1009,6 +996,8 @@ int main(int argc, char **argv)
     if (isOut)
       writer_fusion.release(); // 新增：釋放融合影片
 
-    // return 0;
+  
   }
+  
+  std::cout << "\n=== Completed all image processing ===" << std::endl;
 }

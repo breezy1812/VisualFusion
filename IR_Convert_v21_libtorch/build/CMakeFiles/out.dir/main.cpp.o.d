@@ -187,21 +187,10 @@ CMakeFiles/out.dir/main.cpp.o: \
  /usr/include/c++/9/tr1/poly_hermite.tcc \
  /usr/include/c++/9/tr1/poly_laguerre.tcc \
  /usr/include/c++/9/tr1/riemann_zeta.tcc \
- /usr/local/include/opencv4/opencv2/opencv.hpp \
- /usr/local/include/opencv4/opencv2/opencv_modules.hpp \
- /usr/local/include/opencv4/opencv2/core.hpp \
- /usr/local/include/opencv4/opencv2/core/cvdef.h \
- /usr/local/include/opencv4/opencv2/core/version.hpp \
- /usr/local/include/opencv4/opencv2/core/hal/interface.h \
- /usr/include/c++/9/cstddef \
- /usr/local/include/opencv4/opencv2/core/cv_cpu_dispatch.h \
- /usr/lib/gcc/x86_64-linux-gnu/9/include/emmintrin.h \
- /usr/lib/gcc/x86_64-linux-gnu/9/include/xmmintrin.h \
- /usr/lib/gcc/x86_64-linux-gnu/9/include/mmintrin.h \
- /usr/lib/gcc/x86_64-linux-gnu/9/include/mm_malloc.h \
- /usr/include/c++/9/stdlib.h \
- /usr/local/include/opencv4/opencv2/core/base.hpp \
- /usr/include/c++/9/climits \
+ /usr/include/opencv4/opencv2/opencv.hpp \
+ /usr/include/opencv4/opencv2/opencv_modules.hpp \
+ /usr/include/opencv4/opencv2/core.hpp \
+ /usr/include/opencv4/opencv2/core/cvdef.h \
  /usr/lib/gcc/x86_64-linux-gnu/9/include/limits.h \
  /usr/lib/gcc/x86_64-linux-gnu/9/include/syslimits.h \
  /usr/include/limits.h /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
@@ -210,6 +199,16 @@ CMakeFiles/out.dir/main.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
  /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
  /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
+ /usr/include/opencv4/opencv2/core/hal/interface.h \
+ /usr/include/c++/9/cstddef \
+ /usr/include/opencv4/opencv2/core/cv_cpu_dispatch.h \
+ /usr/lib/gcc/x86_64-linux-gnu/9/include/emmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/9/include/xmmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/9/include/mmintrin.h \
+ /usr/lib/gcc/x86_64-linux-gnu/9/include/mm_malloc.h \
+ /usr/include/c++/9/stdlib.h \
+ /usr/include/opencv4/opencv2/core/version.hpp \
+ /usr/include/opencv4/opencv2/core/base.hpp /usr/include/c++/9/climits \
  /usr/include/c++/9/algorithm /usr/include/c++/9/bits/stl_algo.h \
  /usr/include/c++/9/bits/algorithmfwd.h \
  /usr/include/c++/9/bits/stl_heap.h /usr/include/c++/9/bits/stl_tempbuf.h \
@@ -227,131 +226,146 @@ CMakeFiles/out.dir/main.cpp.o: \
  /usr/include/c++/9/bits/stl_vector.h \
  /usr/include/c++/9/bits/stl_bvector.h /usr/include/c++/9/bits/vector.tcc \
  /usr/include/c++/9/pstl/execution_defs.h \
- /usr/local/include/opencv4/opencv2/core/cvstd.hpp \
- /usr/include/c++/9/cstring /usr/include/string.h /usr/include/strings.h \
- /usr/local/include/opencv4/opencv2/core/cvstd_wrapper.hpp \
+ /usr/include/opencv4/opencv2/core/cvstd.hpp /usr/include/c++/9/cstring \
+ /usr/include/string.h /usr/include/strings.h \
+ /usr/include/opencv4/opencv2/core/cvstd_wrapper.hpp \
  /usr/include/c++/9/memory /usr/include/c++/9/bits/stl_raw_storage_iter.h \
  /usr/include/c++/9/bits/shared_ptr_atomic.h \
  /usr/include/c++/9/bits/atomic_base.h \
  /usr/include/c++/9/bits/atomic_lockfree_defines.h \
  /usr/include/c++/9/backward/auto_ptr.h \
  /usr/include/c++/9/pstl/glue_memory_defs.h \
- /usr/local/include/opencv4/opencv2/core/neon_utils.hpp \
- /usr/local/include/opencv4/opencv2/core/vsx_utils.hpp \
- /usr/include/assert.h /usr/local/include/opencv4/opencv2/core/check.hpp \
- /usr/local/include/opencv4/opencv2/core/traits.hpp \
- /usr/local/include/opencv4/opencv2/core/matx.hpp \
- /usr/local/include/opencv4/opencv2/core/saturate.hpp \
- /usr/local/include/opencv4/opencv2/core/fast_math.hpp \
- /usr/local/include/opencv4/opencv2/core/types.hpp \
- /usr/include/c++/9/cfloat \
+ /usr/include/opencv4/opencv2/core/neon_utils.hpp \
+ /usr/include/opencv4/opencv2/core/vsx_utils.hpp /usr/include/assert.h \
+ /usr/include/opencv4/opencv2/core/check.hpp \
+ /usr/include/opencv4/opencv2/core/traits.hpp \
+ /usr/include/opencv4/opencv2/core/matx.hpp \
+ /usr/include/opencv4/opencv2/core/saturate.hpp \
+ /usr/include/opencv4/opencv2/core/fast_math.hpp \
+ /usr/include/opencv4/opencv2/core/types.hpp /usr/include/c++/9/cfloat \
  /usr/lib/gcc/x86_64-linux-gnu/9/include/float.h \
- /usr/local/include/opencv4/opencv2/core/mat.hpp \
- /usr/local/include/opencv4/opencv2/core/bufferpool.hpp \
- /usr/local/include/opencv4/opencv2/core/mat.inl.hpp \
- /usr/local/include/opencv4/opencv2/core/persistence.hpp \
- /usr/local/include/opencv4/opencv2/core/operations.hpp \
- /usr/local/include/opencv4/opencv2/core/cvstd.inl.hpp \
- /usr/include/c++/9/complex \
- /usr/local/include/opencv4/opencv2/core/utility.hpp \
+ /usr/include/opencv4/opencv2/core/mat.hpp \
+ /usr/include/opencv4/opencv2/core/bufferpool.hpp \
+ /usr/include/opencv4/opencv2/core/mat.inl.hpp \
+ /usr/include/opencv4/opencv2/core/persistence.hpp \
+ /usr/include/opencv4/opencv2/core/operations.hpp \
+ /usr/include/opencv4/opencv2/core/cvstd.inl.hpp \
+ /usr/include/c++/9/complex /usr/include/opencv4/opencv2/core/utility.hpp \
  /usr/include/c++/9/mutex /usr/include/c++/9/bits/std_mutex.h \
  /usr/include/c++/9/bits/unique_lock.h \
- /usr/local/include/opencv4/opencv2/core/optim.hpp \
- /usr/local/include/opencv4/opencv2/core/ovx.hpp \
- /usr/local/include/opencv4/opencv2/core/cvdef.h \
- /usr/local/include/opencv4/opencv2/calib3d.hpp \
- /usr/local/include/opencv4/opencv2/features2d.hpp \
- /usr/local/include/opencv4/opencv2/flann/miniflann.hpp \
- /usr/local/include/opencv4/opencv2/flann/defines.h \
- /usr/local/include/opencv4/opencv2/flann/config.h \
- /usr/local/include/opencv4/opencv2/core/affine.hpp \
- /usr/local/include/opencv4/opencv2/dnn.hpp \
- /usr/local/include/opencv4/opencv2/dnn/dnn.hpp \
- /usr/local/include/opencv4/opencv2/core/async.hpp \
- /usr/local/include/opencv4/opencv2/dnn/version.hpp \
- /usr/local/include/opencv4/opencv2/dnn/dict.hpp /usr/include/c++/9/map \
+ /usr/include/opencv4/opencv2/core/optim.hpp \
+ /usr/include/opencv4/opencv2/core/ovx.hpp \
+ /usr/include/opencv4/opencv2/core/cvdef.h \
+ /usr/include/opencv4/opencv2/calib3d.hpp \
+ /usr/include/opencv4/opencv2/features2d.hpp \
+ /usr/include/opencv4/opencv2/flann/miniflann.hpp \
+ /usr/include/opencv4/opencv2/flann/defines.h \
+ /usr/include/opencv4/opencv2/flann/config.h \
+ /usr/include/opencv4/opencv2/core/affine.hpp \
+ /usr/include/opencv4/opencv2/dnn.hpp \
+ /usr/include/opencv4/opencv2/dnn/dnn.hpp \
+ /usr/include/opencv4/opencv2/core/async.hpp \
+ /usr/include/opencv4/opencv2/dnn/version.hpp \
+ /usr/include/opencv4/opencv2/dnn/dict.hpp /usr/include/c++/9/map \
  /usr/include/c++/9/bits/stl_tree.h /usr/include/c++/9/bits/stl_map.h \
  /usr/include/c++/9/bits/stl_multimap.h \
- /usr/local/include/opencv4/opencv2/dnn/layer.hpp \
- /usr/local/include/opencv4/opencv2/dnn/dnn.inl.hpp \
- /usr/local/include/opencv4/opencv2/dnn/utils/inference_engine.hpp \
- /usr/local/include/opencv4/opencv2/dnn/dnn.hpp \
- /usr/local/include/opencv4/opencv2/flann.hpp \
- /usr/local/include/opencv4/opencv2/flann/flann_base.hpp \
- /usr/local/include/opencv4/opencv2/flann/general.h \
- /usr/local/include/opencv4/opencv2/flann/matrix.h \
- /usr/local/include/opencv4/opencv2/flann/params.h \
- /usr/local/include/opencv4/opencv2/flann/any.h \
- /usr/local/include/opencv4/opencv2/flann/defines.h \
- /usr/local/include/opencv4/opencv2/flann/saving.h \
- /usr/local/include/opencv4/opencv2/flann/nn_index.h \
- /usr/local/include/opencv4/opencv2/flann/result_set.h \
- /usr/include/c++/9/set /usr/include/c++/9/bits/stl_set.h \
- /usr/include/c++/9/bits/stl_multiset.h \
- /usr/local/include/opencv4/opencv2/flann/all_indices.h \
- /usr/local/include/opencv4/opencv2/flann/kdtree_index.h \
- /usr/local/include/opencv4/opencv2/flann/dynamic_bitset.h \
- /usr/local/include/opencv4/opencv2/flann/dist.h \
- /usr/local/include/opencv4/opencv2/flann/heap.h \
- /usr/local/include/opencv4/opencv2/flann/allocator.h \
- /usr/local/include/opencv4/opencv2/flann/random.h \
- /usr/local/include/opencv4/opencv2/flann/kdtree_single_index.h \
- /usr/local/include/opencv4/opencv2/flann/kmeans_index.h \
- /usr/local/include/opencv4/opencv2/flann/logger.h \
- /usr/local/include/opencv4/opencv2/flann/composite_index.h \
- /usr/local/include/opencv4/opencv2/flann/linear_index.h \
- /usr/local/include/opencv4/opencv2/flann/hierarchical_clustering_index.h \
- /usr/local/include/opencv4/opencv2/flann/lsh_index.h \
- /usr/local/include/opencv4/opencv2/flann/lsh_table.h \
- /usr/include/c++/9/math.h \
- /usr/local/include/opencv4/opencv2/flann/autotuned_index.h \
- /usr/local/include/opencv4/opencv2/flann/ground_truth.h \
- /usr/local/include/opencv4/opencv2/flann/index_testing.h \
- /usr/local/include/opencv4/opencv2/flann/timer.h \
- /usr/local/include/opencv4/opencv2/flann/sampling.h \
- /usr/local/include/opencv4/opencv2/highgui.hpp \
- /usr/local/include/opencv4/opencv2/imgcodecs.hpp \
- /usr/local/include/opencv4/opencv2/videoio.hpp \
- /usr/local/include/opencv4/opencv2/imgproc.hpp \
- /usr/local/include/opencv4/opencv2/imgproc/segmentation.hpp \
- /usr/local/include/opencv4/opencv2/ml.hpp \
- /usr/local/include/opencv4/opencv2/ml/ml.inl.hpp \
- /usr/local/include/opencv4/opencv2/objdetect.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/aruco_detector.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/aruco_dictionary.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/aruco_board.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/graphical_code_detector.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/face.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/charuco_detector.hpp \
- /usr/local/include/opencv4/opencv2/objdetect/barcode.hpp \
- /usr/local/include/opencv4/opencv2/photo.hpp \
- /usr/local/include/opencv4/opencv2/stitching.hpp \
- /usr/local/include/opencv4/opencv2/stitching/warpers.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/warpers.hpp \
- /usr/local/include/opencv4/opencv2/core/cuda.hpp \
- /usr/local/include/opencv4/opencv2/core/cuda_types.hpp \
- /usr/local/include/opencv4/opencv2/core/cuda.inl.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/warpers_inl.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/warpers.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/matchers.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/motion_estimators.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/matchers.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/util.hpp \
+ /usr/include/opencv4/opencv2/dnn/layer.hpp \
+ /usr/include/opencv4/opencv2/dnn/dnn.inl.hpp \
+ /usr/include/opencv4/opencv2/dnn/utils/inference_engine.hpp \
+ /usr/include/opencv4/opencv2/dnn/dnn.hpp \
+ /usr/include/opencv4/opencv2/flann.hpp \
+ /usr/include/opencv4/opencv2/flann/flann_base.hpp \
+ /usr/include/c++/9/cassert /usr/include/opencv4/opencv2/flann/general.h \
+ /usr/include/opencv4/opencv2/flann/matrix.h \
+ /usr/include/opencv4/opencv2/flann/params.h \
+ /usr/include/opencv4/opencv2/flann/any.h \
+ /usr/include/opencv4/opencv2/flann/defines.h \
+ /usr/include/opencv4/opencv2/flann/saving.h \
+ /usr/include/opencv4/opencv2/flann/nn_index.h \
+ /usr/include/opencv4/opencv2/flann/result_set.h /usr/include/c++/9/set \
+ /usr/include/c++/9/bits/stl_set.h /usr/include/c++/9/bits/stl_multiset.h \
+ /usr/include/opencv4/opencv2/flann/all_indices.h \
+ /usr/include/opencv4/opencv2/flann/kdtree_index.h \
+ /usr/include/opencv4/opencv2/flann/dynamic_bitset.h \
+ /usr/include/opencv4/opencv2/flann/dist.h \
+ /usr/include/opencv4/opencv2/flann/heap.h \
+ /usr/include/opencv4/opencv2/flann/allocator.h \
+ /usr/include/opencv4/opencv2/flann/random.h \
+ /usr/include/opencv4/opencv2/flann/kdtree_single_index.h \
+ /usr/include/opencv4/opencv2/flann/kmeans_index.h \
+ /usr/include/opencv4/opencv2/flann/logger.h \
+ /usr/include/opencv4/opencv2/flann/composite_index.h \
+ /usr/include/opencv4/opencv2/flann/linear_index.h \
+ /usr/include/opencv4/opencv2/flann/hierarchical_clustering_index.h \
+ /usr/include/opencv4/opencv2/flann/lsh_index.h \
+ /usr/include/opencv4/opencv2/flann/lsh_table.h /usr/include/c++/9/math.h \
+ /usr/include/opencv4/opencv2/flann/autotuned_index.h \
+ /usr/include/opencv4/opencv2/flann/ground_truth.h \
+ /usr/include/opencv4/opencv2/flann/index_testing.h \
+ /usr/include/opencv4/opencv2/flann/timer.h \
+ /usr/include/opencv4/opencv2/flann/sampling.h \
+ /usr/include/opencv4/opencv2/highgui.hpp \
+ /usr/include/opencv4/opencv2/imgcodecs.hpp \
+ /usr/include/opencv4/opencv2/videoio.hpp \
+ /usr/include/opencv4/opencv2/imgproc.hpp \
+ /usr/include/opencv4/opencv2/ml.hpp \
+ /usr/include/opencv4/opencv2/ml/ml.inl.hpp \
+ /usr/include/opencv4/opencv2/objdetect.hpp \
+ /usr/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp \
+ /usr/include/opencv4/opencv2/photo.hpp \
+ /usr/include/opencv4/opencv2/shape.hpp \
+ /usr/include/opencv4/opencv2/shape/emdL1.hpp \
+ /usr/include/opencv4/opencv2/shape/shape_transformer.hpp \
+ /usr/include/opencv4/opencv2/shape/hist_cost.hpp \
+ /usr/include/opencv4/opencv2/shape/shape_distance.hpp \
+ /usr/include/opencv4/opencv2/stitching.hpp \
+ /usr/include/opencv4/opencv2/stitching/warpers.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/warpers.hpp \
+ /usr/include/opencv4/opencv2/core/cuda.hpp \
+ /usr/include/opencv4/opencv2/core/cuda_types.hpp \
+ /usr/include/opencv4/opencv2/core/cuda.inl.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/warpers_inl.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/warpers.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/matchers.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/motion_estimators.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/matchers.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/util.hpp \
  /usr/include/c++/9/list /usr/include/c++/9/bits/stl_list.h \
  /usr/include/c++/9/bits/list.tcc \
- /usr/local/include/opencv4/opencv2/stitching/detail/util_inl.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/util_inl.hpp \
  /usr/include/c++/9/queue /usr/include/c++/9/deque \
  /usr/include/c++/9/bits/stl_deque.h /usr/include/c++/9/bits/deque.tcc \
  /usr/include/c++/9/bits/stl_queue.h \
- /usr/local/include/opencv4/opencv2/stitching/detail/camera.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/seam_finders.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/blenders.hpp \
- /usr/local/include/opencv4/opencv2/stitching/detail/camera.hpp \
- /usr/local/include/opencv4/opencv2/video.hpp \
- /usr/local/include/opencv4/opencv2/video/tracking.hpp \
- /usr/local/include/opencv4/opencv2/video/background_segm.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/camera.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/seam_finders.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/blenders.hpp \
+ /usr/include/opencv4/opencv2/stitching/detail/camera.hpp \
+ /usr/include/opencv4/opencv2/superres.hpp \
+ /usr/include/opencv4/opencv2/superres/optical_flow.hpp \
+ /usr/include/opencv4/opencv2/video.hpp \
+ /usr/include/opencv4/opencv2/video/tracking.hpp \
+ /usr/include/opencv4/opencv2/video/background_segm.hpp \
+ /usr/include/opencv4/opencv2/videostab.hpp \
+ /usr/include/opencv4/opencv2/videostab/stabilizer.hpp \
+ /usr/include/opencv4/opencv2/videostab/global_motion.hpp \
+ /usr/include/opencv4/opencv2/videostab/optical_flow.hpp \
+ /usr/include/opencv4/opencv2/videostab/motion_core.hpp \
+ /usr/include/opencv4/opencv2/videostab/outlier_rejection.hpp \
+ /usr/include/opencv4/opencv2/videostab/motion_stabilizing.hpp \
+ /usr/include/opencv4/opencv2/videostab/frame_source.hpp \
+ /usr/include/opencv4/opencv2/videostab/log.hpp \
+ /usr/include/opencv4/opencv2/videostab/inpainting.hpp \
+ /usr/include/opencv4/opencv2/videostab/fast_marching.hpp \
+ /usr/include/opencv4/opencv2/videostab/fast_marching_inl.hpp \
+ /usr/include/opencv4/opencv2/videostab/deblurring.hpp \
+ /usr/include/opencv4/opencv2/videostab/wobble_suppression.hpp \
+ /usr/include/opencv4/opencv2/videostab/ring_buffer.hpp \
+ /usr/include/opencv4/opencv2/viz.hpp \
+ /usr/include/opencv4/opencv2/viz/types.hpp \
+ /usr/include/opencv4/opencv2/viz/widgets.hpp \
+ /usr/include/opencv4/opencv2/viz/viz3d.hpp \
+ /usr/include/opencv4/opencv2/viz/vizcore.hpp \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/include/core_image_to_gray.h \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/src/core_image_to_gray.cpp \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/include/core_image_to_gray.h \
@@ -391,31 +405,28 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/TensorBody.h \
  /opt/libtorch/include/c10/core/Device.h \
  /opt/libtorch/include/c10/core/DeviceType.h \
+ /opt/libtorch/include/c10/macros/Macros.h \
  /opt/libtorch/include/c10/util/Exception.h \
- /opt/libtorch/include/c10/macros/Macros.h /usr/include/c++/9/cassert \
+ /opt/libtorch/include/c10/util/Deprecated.h \
  /opt/libtorch/include/c10/util/StringUtil.h \
  /opt/libtorch/include/c10/util/string_utils.h \
  /opt/libtorch/include/c10/util/string_view.h \
  /opt/libtorch/include/c10/util/C++17.h \
  /opt/libtorch/include/c10/util/reverse_iterator.h \
  /usr/include/c++/9/iterator /usr/include/c++/9/bits/stream_iterator.h \
- /opt/libtorch/include/c10/util/variant.h \
- /opt/libtorch/include/c10/util/in_place.h \
  /opt/libtorch/include/c10/core/Layout.h \
  /opt/libtorch/include/c10/core/Backend.h \
  /opt/libtorch/include/c10/core/DispatchKey.h \
+ /opt/libtorch/include/c10/util/ArrayRef.h \
+ /opt/libtorch/include/c10/util/SmallVector.h \
+ /opt/libtorch/include/c10/util/AlignOf.h \
  /opt/libtorch/include/c10/core/DispatchKeySet.h \
  /opt/libtorch/include/c10/util/Metaprogramming.h \
  /opt/libtorch/include/c10/util/Array.h \
  /opt/libtorch/include/c10/util/TypeList.h \
  /opt/libtorch/include/c10/util/TypeTraits.h \
  /opt/libtorch/include/c10/util/llvmMathExtras.h \
- /opt/libtorch/include/c10/util/bit_cast.h \
  /opt/libtorch/include/c10/core/MemoryFormat.h \
- /opt/libtorch/include/c10/util/ArrayRef.h \
- /opt/libtorch/include/c10/util/Deprecated.h \
- /opt/libtorch/include/c10/util/SmallVector.h \
- /opt/libtorch/include/c10/util/AlignOf.h \
  /opt/libtorch/include/c10/core/QScheme.h \
  /opt/libtorch/include/c10/core/Stream.h \
  /opt/libtorch/include/c10/core/Scalar.h \
@@ -423,65 +434,66 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/c10/core/ScalarType.h \
  /opt/libtorch/include/c10/util/BFloat16.h \
  /opt/libtorch/include/c10/util/BFloat16-inl.h \
- /opt/libtorch/include/c10/util/Float8_e4m3fn.h \
- /opt/libtorch/include/c10/util/TypeSafeSignMath.h \
- /opt/libtorch/include/c10/util/floating_point_utils.h \
- /opt/libtorch/include/c10/util/Float8_e4m3fn-inl.h \
- /opt/libtorch/include/c10/util/Float8_e5m2.h \
  /opt/libtorch/include/c10/util/Half.h \
+ /opt/libtorch/include/c10/util/TypeSafeSignMath.h \
  /opt/libtorch/include/c10/util/complex.h \
  /opt/libtorch/include/c10/util/complex_math.h \
  /opt/libtorch/include/c10/util/complex_utils.h \
  /opt/libtorch/include/c10/util/Half-inl.h \
- /opt/libtorch/include/c10/util/Float8_e5m2-inl.h \
- /opt/libtorch/include/c10/util/bits.h \
  /opt/libtorch/include/c10/util/qint32.h \
  /opt/libtorch/include/c10/util/qint8.h \
  /opt/libtorch/include/c10/util/quint2x4.h \
  /opt/libtorch/include/c10/util/quint4x2.h \
  /opt/libtorch/include/c10/util/quint8.h \
  /opt/libtorch/include/c10/core/SymFloat.h \
- /opt/libtorch/include/c10/core/SymBool.h \
- /opt/libtorch/include/c10/core/SymNodeImpl.h \
- /opt/libtorch/include/c10/util/Optional.h \
+ /opt/libtorch/include/c10/core/SymFloatNodeImpl.h \
  /opt/libtorch/include/c10/util/intrusive_ptr.h \
+ /opt/libtorch/include/c10/util/ExclusivelyOwned.h \
+ /opt/libtorch/include/c10/util/in_place.h \
  /opt/libtorch/include/c10/util/MaybeOwned.h /usr/include/c++/9/atomic \
  /opt/libtorch/include/c10/core/SymInt.h \
+ /opt/libtorch/include/c10/core/SymIntNodeImpl.h \
  /opt/libtorch/include/c10/util/TypeCast.h \
  /opt/libtorch/include/c10/core/ScalarTypeToTypeMeta.h \
- /opt/libtorch/include/c10/util/typeid.h \
+ /opt/libtorch/include/c10/util/Optional.h \
+ /opt/libtorch/include/c10/util/typeid.h /usr/include/c++/9/unordered_set \
+ /usr/include/c++/9/bits/unordered_set.h \
+ /opt/libtorch/include/c10/util/Backtrace.h \
  /opt/libtorch/include/c10/util/IdWrapper.h \
+ /opt/libtorch/include/c10/util/Type.h \
  /opt/libtorch/include/c10/util/TypeIndex.h \
  /opt/libtorch/include/c10/util/ConstexprCrc.h \
  /usr/include/c++/9/cinttypes /usr/include/inttypes.h \
+ /opt/libtorch/include/c10/util/flat_hash_map.h \
  /opt/libtorch/include/c10/util/irange.h \
  /opt/libtorch/include/c10/core/Storage.h \
  /opt/libtorch/include/c10/core/StorageImpl.h \
  /opt/libtorch/include/c10/core/Allocator.h \
  /opt/libtorch/include/c10/util/ThreadLocalDebugInfo.h \
  /opt/libtorch/include/c10/util/UniqueVoidPtr.h \
- /opt/libtorch/include/c10/core/impl/PyObjectSlot.h \
- /opt/libtorch/include/c10/core/impl/HermeticPyObjectTLS.h \
- /opt/libtorch/include/c10/core/impl/PyInterpreter.h \
- /opt/libtorch/include/c10/core/SymIntArrayRef.h \
  /opt/libtorch/include/c10/core/TensorImpl.h \
+ /opt/libtorch/include/c10/core/CopyBytes.h \
  /opt/libtorch/include/c10/core/InferenceMode.h \
  /opt/libtorch/include/c10/core/AutogradState.h \
+ /opt/libtorch/include/c10/core/GradMode.h \
  /opt/libtorch/include/c10/core/impl/LocalDispatchKeySet.h \
- /opt/libtorch/include/c10/core/WrapDimMinimal.h \
- /opt/libtorch/include/c10/core/impl/SizesAndStrides.h \
- /opt/libtorch/include/c10/util/DimVector.h \
  /opt/libtorch/include/c10/util/Flags.h \
  /opt/libtorch/include/c10/util/Registry.h \
- /opt/libtorch/include/c10/util/Type.h \
- /opt/libtorch/include/c10/util/accumulate.h \
- /opt/libtorch/include/c10/util/safe_numerics.h \
- /opt/libtorch/include/c10/core/UndefinedTensorImpl.h \
- /opt/libtorch/include/c10/util/ExclusivelyOwned.h \
- /opt/libtorch/include/c10/util/OptionalArrayRef.h \
- /opt/libtorch/include/ATen/core/CheckMemoryFormat.h \
+ /opt/libtorch/include/c10/core/SymIntArrayRef.h \
  /opt/libtorch/include/c10/core/TensorOptions.h \
  /opt/libtorch/include/c10/core/DefaultDtype.h \
+ /opt/libtorch/include/c10/core/WrapDimMinimal.h \
+ /opt/libtorch/include/c10/core/impl/PyInterpreter.h \
+ /opt/libtorch/include/c10/core/impl/SizesAndStrides.h \
+ /opt/libtorch/include/c10/util/DimVector.h \
+ /opt/libtorch/include/c10/util/Logging.h \
+ /opt/libtorch/include/c10/util/logging_is_not_google_glog.h \
+ /opt/libtorch/include/c10/util/accumulate.h \
+ /opt/libtorch/include/c10/util/safe_numerics.h \
+ /opt/libtorch/include/c10/util/strong_type.h \
+ /opt/libtorch/include/c10/core/UndefinedTensorImpl.h \
+ /opt/libtorch/include/c10/util/OptionalArrayRef.h \
+ /opt/libtorch/include/ATen/core/CheckMemoryFormat.h \
  /opt/libtorch/include/ATen/core/DeprecatedTypePropertiesRegistry.h \
  /opt/libtorch/include/ATen/core/DeprecatedTypeProperties.h \
  /opt/libtorch/include/ATen/core/Generator.h \
@@ -493,7 +505,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/TensorAccessor.h \
  /opt/libtorch/include/ATen/core/TensorBase.h \
  /opt/libtorch/include/c10/util/ExclusivelyOwnedTensorTraits.h \
- /opt/libtorch/include/ATen/StorageUtils.h \
  /opt/libtorch/include/ATen/MethodOperators.h \
  /opt/libtorch/include/ATen/core/ATen_fwd.h \
  /opt/libtorch/include/ATen/ops/_addmm_activation_ops.h \
@@ -507,22 +518,15 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_dimV_ops.h \
  /opt/libtorch/include/ATen/ops/_fw_primal_ops.h \
  /opt/libtorch/include/ATen/ops/_indices_ops.h \
- /opt/libtorch/include/ATen/ops/_is_all_true_ops.h \
- /opt/libtorch/include/ATen/ops/_is_any_true_ops.h \
  /opt/libtorch/include/ATen/ops/_is_zerotensor_ops.h \
  /opt/libtorch/include/ATen/ops/_neg_view_ops.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_layer_norm_ops.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_offsets_ops.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_size_ops.h \
- /opt/libtorch/include/ATen/ops/_nested_tensor_storage_offsets_ops.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_strides_ops.h \
  /opt/libtorch/include/ATen/ops/_nnz_ops.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias_ops.h \
- /opt/libtorch/include/ATen/ops/_sparse_mask_projection_ops.h \
  /opt/libtorch/include/ATen/ops/_to_dense_ops.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsc_ops.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsr_ops.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csc_ops.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csr_ops.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_ops.h \
  /opt/libtorch/include/ATen/ops/_values_ops.h \
  /opt/libtorch/include/ATen/ops/_version_ops.h \
  /opt/libtorch/include/ATen/ops/abs_ops.h \
@@ -775,7 +779,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/nextafter_ops.h \
  /opt/libtorch/include/ATen/ops/nonzero_numpy_ops.h \
  /opt/libtorch/include/ATen/ops/nonzero_ops.h \
- /opt/libtorch/include/ATen/ops/nonzero_static_ops.h \
  /opt/libtorch/include/ATen/ops/norm_ops.h \
  /opt/libtorch/include/ATen/ops/normal_ops.h \
  /opt/libtorch/include/ATen/ops/not_equal_ops.h \
@@ -791,6 +794,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/polygamma_ops.h \
  /opt/libtorch/include/ATen/ops/positive_ops.h \
  /opt/libtorch/include/ATen/ops/pow_ops.h \
+ /opt/libtorch/include/ATen/ops/prelu_backward_ops.h \
  /opt/libtorch/include/ATen/ops/prelu_ops.h \
  /opt/libtorch/include/ATen/ops/prod_ops.h \
  /opt/libtorch/include/ATen/ops/put_ops.h \
@@ -871,6 +875,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/svd_ops.h \
  /opt/libtorch/include/ATen/ops/swapaxes_ops.h \
  /opt/libtorch/include/ATen/ops/swapdims_ops.h \
+ /opt/libtorch/include/ATen/ops/symeig_ops.h \
  /opt/libtorch/include/ATen/ops/t_ops.h \
  /opt/libtorch/include/ATen/ops/take_along_dim_ops.h \
  /opt/libtorch/include/ATen/ops/take_ops.h \
@@ -917,7 +922,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/torch/csrc/autograd/edge.h \
  /opt/libtorch/include/c10/util/hash.h \
  /opt/libtorch/include/torch/csrc/autograd/forward_grad.h \
- /usr/include/c++/9/unordered_set /usr/include/c++/9/bits/unordered_set.h \
  /opt/libtorch/include/ATen/NamedTensorUtils.h \
  /opt/libtorch/include/ATen/NamedTensor.h \
  /opt/libtorch/include/ATen/TensorNames.h \
@@ -954,10 +958,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/c10/core/StreamGuard.h \
  /opt/libtorch/include/c10/core/impl/InlineStreamGuard.h \
  /opt/libtorch/include/c10/util/FunctionRef.h \
- /opt/libtorch/include/c10/util/Logging.h \
- /opt/libtorch/include/c10/util/logging_is_not_google_glog.h \
- /opt/libtorch/include/ATen/WrapDimUtilsMulti.h /usr/include/c++/9/bitset \
- /opt/libtorch/include/ATen/core/VariableHooksInterface.h \
  /opt/libtorch/include/torch/csrc/autograd/autograd_not_implemented_fallback.h \
  /opt/libtorch/include/torch/library.h \
  /opt/libtorch/include/ATen/core/op_registration/infer_schema.h \
@@ -969,7 +969,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/op_registration/op_allowlist.h \
  /opt/libtorch/include/torch/csrc/jit/frontend/function_schema_parser.h \
  /opt/libtorch/include/c10/util/either.h \
- /opt/libtorch/include/ATen/core/enum_tag.h \
  /opt/libtorch/include/ATen/core/op_registration/op_registration.h \
  /opt/libtorch/include/c10/core/CompileTimeFunctionPointer.h \
  /opt/libtorch/include/ATen/core/boxing/KernelFunction.h \
@@ -985,18 +984,17 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/dispatch/CppSignature.h \
  /opt/libtorch/include/ATen/core/dispatch/RegistrationHandleRAII.h \
  /opt/libtorch/include/ATen/core/ATenOpList.h \
+ /opt/libtorch/include/ATen/core/enum_tag.h \
  /opt/libtorch/include/torch/custom_class.h \
  /opt/libtorch/include/ATen/core/builtin_function.h \
  /opt/libtorch/include/ATen/core/function.h \
  /opt/libtorch/include/ATen/core/class_type.h \
  /opt/libtorch/include/torch/custom_class_detail.h \
  /opt/libtorch/include/torch/csrc/autograd/custom_function.h \
- /opt/libtorch/include/c10/util/flat_hash_map.h \
  /opt/libtorch/include/torch/csrc/autograd/function.h \
  /opt/libtorch/include/torch/csrc/autograd/anomaly_mode.h \
  /opt/libtorch/include/torch/csrc/autograd/grad_mode.h \
  /opt/libtorch/include/ATen/core/grad_mode.h \
- /opt/libtorch/include/c10/core/GradMode.h \
  /opt/libtorch/include/torch/csrc/autograd/graph_task.h \
  /opt/libtorch/include/ATen/ThreadLocalState.h /usr/include/c++/9/stack \
  /usr/include/c++/9/bits/stl_stack.h \
@@ -1004,8 +1002,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/PythonTorchFunctionTLS.h \
  /opt/libtorch/include/c10/core/SafePyObject.h \
  /opt/libtorch/include/ATen/SavedTensorHooks.h \
- /opt/libtorch/include/ATen/ThreadLocalPythonObjects.h \
  /opt/libtorch/include/ATen/record_function.h \
+ /opt/libtorch/include/c10/util/variant.h \
  /opt/libtorch/include/c10/core/impl/PythonDispatcherTLS.h \
  /opt/libtorch/include/c10/core/impl/TorchDispatchModeTLS.h \
  /opt/libtorch/include/c10/util/ThreadLocal.h \
@@ -1022,14 +1020,9 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/LegacyTypeDispatch.h \
  /opt/libtorch/include/ATen/detail/CUDAHooksInterface.h \
  /opt/libtorch/include/ATen/detail/HIPHooksInterface.h \
- /opt/libtorch/include/ATen/detail/MPSHooksInterface.h \
- /opt/libtorch/include/ATen/detail/MTIAHooksInterface.h \
  /opt/libtorch/include/ATen/detail/ORTHooksInterface.h \
- /opt/libtorch/include/ATen/detail/PrivateUse1HooksInterface.h \
- /opt/libtorch/include/ATen/detail/XPUHooksInterface.h \
  /opt/libtorch/include/c10/core/QEngine.h \
- /opt/libtorch/include/c10/util/CallOnce.h \
- /opt/libtorch/include/c10/util/env.h \
+ /opt/libtorch/include/c10/util/CallOnce.h /usr/include/c++/9/thread \
  /opt/libtorch/include/ATen/DeviceGuard.h \
  /opt/libtorch/include/ATen/TensorUtils.h \
  /opt/libtorch/include/ATen/DimVector.h \
@@ -1121,10 +1114,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_copy_from_ops.h \
  /opt/libtorch/include/ATen/ops/_copy_from_and_resize.h \
  /opt/libtorch/include/ATen/ops/_copy_from_and_resize_ops.h \
- /opt/libtorch/include/ATen/ops/_cslt_compress.h \
- /opt/libtorch/include/ATen/ops/_cslt_compress_ops.h \
- /opt/libtorch/include/ATen/ops/_cslt_sparse_mm.h \
- /opt/libtorch/include/ATen/ops/_cslt_sparse_mm_ops.h \
  /opt/libtorch/include/ATen/ops/_ctc_loss.h \
  /opt/libtorch/include/ATen/ops/_ctc_loss_ops.h \
  /opt/libtorch/include/ATen/ops/_ctc_loss_backward.h \
@@ -1159,10 +1148,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_dim_arange_ops.h \
  /opt/libtorch/include/ATen/ops/_dirichlet_grad.h \
  /opt/libtorch/include/ATen/ops/_dirichlet_grad_ops.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_backward.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_forward.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_forward_ops.h \
  /opt/libtorch/include/ATen/ops/_efficientzerotensor.h \
  /opt/libtorch/include/ATen/ops/_efficientzerotensor_ops.h \
  /opt/libtorch/include/ATen/ops/_embedding_bag.h \
@@ -1199,12 +1184,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_fft_c2r_ops.h \
  /opt/libtorch/include/ATen/ops/_fft_r2c.h \
  /opt/libtorch/include/ATen/ops/_fft_r2c_ops.h \
- /opt/libtorch/include/ATen/ops/_fill_mem_eff_dropout_mask.h \
- /opt/libtorch/include/ATen/ops/_fill_mem_eff_dropout_mask_ops.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_backward.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_forward.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_forward_ops.h \
+ /opt/libtorch/include/ATen/ops/_flash_scaled_dot_product_attention.h \
+ /opt/libtorch/include/ATen/ops/_flash_scaled_dot_product_attention_ops.h \
  /opt/libtorch/include/ATen/ops/_foobar.h \
  /opt/libtorch/include/ATen/ops/_foobar_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_abs.h \
@@ -1223,12 +1204,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_atan_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_ceil.h \
  /opt/libtorch/include/ATen/ops/_foreach_ceil_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_max.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_max_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_min.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_min_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_copy.h \
- /opt/libtorch/include/ATen/ops/_foreach_copy_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_cos.h \
  /opt/libtorch/include/ATen/ops/_foreach_cos_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_cosh.h \
@@ -1247,8 +1222,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_floor_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_frac.h \
  /opt/libtorch/include/ATen/ops/_foreach_frac_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_lerp.h \
- /opt/libtorch/include/ATen/ops/_foreach_lerp_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_lgamma.h \
  /opt/libtorch/include/ATen/ops/_foreach_lgamma_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_log.h \
@@ -1269,16 +1242,12 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_neg_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_norm.h \
  /opt/libtorch/include/ATen/ops/_foreach_norm_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_pow.h \
- /opt/libtorch/include/ATen/ops/_foreach_pow_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_reciprocal.h \
  /opt/libtorch/include/ATen/ops/_foreach_reciprocal_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_round.h \
  /opt/libtorch/include/ATen/ops/_foreach_round_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_sigmoid.h \
  /opt/libtorch/include/ATen/ops/_foreach_sigmoid_ops.h \
- /opt/libtorch/include/ATen/ops/_foreach_sign.h \
- /opt/libtorch/include/ATen/ops/_foreach_sign_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_sin.h \
  /opt/libtorch/include/ATen/ops/_foreach_sin_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_sinh.h \
@@ -1295,22 +1264,12 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_trunc_ops.h \
  /opt/libtorch/include/ATen/ops/_foreach_zero.h \
  /opt/libtorch/include/ATen/ops/_foreach_zero_ops.h \
- /opt/libtorch/include/ATen/ops/_functional_assert_async.h \
- /opt/libtorch/include/ATen/ops/_functional_assert_async_ops.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range_ops.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range_for_size.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range_for_size_ops.h \
  /opt/libtorch/include/ATen/ops/_fused_adam.h \
  /opt/libtorch/include/ATen/ops/_fused_adam_ops.h \
- /opt/libtorch/include/ATen/ops/_fused_adamw.h \
- /opt/libtorch/include/ATen/ops/_fused_adamw_ops.h \
  /opt/libtorch/include/ATen/ops/_fused_dropout.h \
  /opt/libtorch/include/ATen/ops/_fused_dropout_ops.h \
  /opt/libtorch/include/ATen/ops/_fused_moving_avg_obs_fq_helper.h \
  /opt/libtorch/include/ATen/ops/_fused_moving_avg_obs_fq_helper_ops.h \
- /opt/libtorch/include/ATen/ops/_fused_sdp_choice.h \
- /opt/libtorch/include/ATen/ops/_fused_sdp_choice_ops.h \
  /opt/libtorch/include/ATen/ops/_fw_primal.h \
  /opt/libtorch/include/ATen/ops/_fw_primal_copy.h \
  /opt/libtorch/include/ATen/ops/_fw_primal_copy_ops.h \
@@ -1335,10 +1294,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_indices.h \
  /opt/libtorch/include/ATen/ops/_indices_copy.h \
  /opt/libtorch/include/ATen/ops/_indices_copy_ops.h \
- /opt/libtorch/include/ATen/ops/_int_mm.h \
- /opt/libtorch/include/ATen/ops/_int_mm_ops.h \
- /opt/libtorch/include/ATen/ops/_is_all_true.h \
- /opt/libtorch/include/ATen/ops/_is_any_true.h \
  /opt/libtorch/include/ATen/ops/_is_zerotensor.h \
  /opt/libtorch/include/ATen/ops/_linalg_check_errors.h \
  /opt/libtorch/include/ATen/ops/_linalg_check_errors_ops.h \
@@ -1364,8 +1319,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_lstm_mps_ops.h \
  /opt/libtorch/include/ATen/ops/_lu_with_info.h \
  /opt/libtorch/include/ATen/ops/_lu_with_info_ops.h \
- /opt/libtorch/include/ATen/ops/_make_dep_token.h \
- /opt/libtorch/include/ATen/ops/_make_dep_token_ops.h \
  /opt/libtorch/include/ATen/ops/_make_dual.h \
  /opt/libtorch/include/ATen/ops/_make_dual_ops.h \
  /opt/libtorch/include/ATen/ops/_make_dual_copy.h \
@@ -1388,10 +1341,10 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_mps_convolution_ops.h \
  /opt/libtorch/include/ATen/ops/_mps_convolution_transpose.h \
  /opt/libtorch/include/ATen/ops/_mps_convolution_transpose_ops.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit_ops.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit_no_training.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit_no_training_ops.h \
+ /opt/libtorch/include/ATen/ops/_mps_max_pool2d.h \
+ /opt/libtorch/include/ATen/ops/_mps_max_pool2d_ops.h \
+ /opt/libtorch/include/ATen/ops/_native_decoder_only_multi_head_attention.h \
+ /opt/libtorch/include/ATen/ops/_native_decoder_only_multi_head_attention_ops.h \
  /opt/libtorch/include/ATen/ops/_native_multi_head_attention.h \
  /opt/libtorch/include/ATen/ops/_native_multi_head_attention_ops.h \
  /opt/libtorch/include/ATen/ops/_neg_view.h \
@@ -1411,10 +1364,11 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_mask_left_aligned_ops.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_tensor_list.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_tensor_list_ops.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_layer_norm.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_offsets.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_size.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_softmax_with_shape.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_softmax_with_shape_ops.h \
- /opt/libtorch/include/ATen/ops/_nested_tensor_storage_offsets.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_strides.h \
  /opt/libtorch/include/ATen/ops/_nested_view_from_buffer.h \
  /opt/libtorch/include/ATen/ops/_nested_view_from_buffer_ops.h \
@@ -1443,19 +1397,11 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_pdist_forward_ops.h \
  /opt/libtorch/include/ATen/ops/_pin_memory.h \
  /opt/libtorch/include/ATen/ops/_pin_memory_ops.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel_ops.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel_backward.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_propagate_xla_data.h \
- /opt/libtorch/include/ATen/ops/_propagate_xla_data_ops.h \
  /opt/libtorch/include/ATen/ops/_remove_batch_dim.h \
  /opt/libtorch/include/ATen/ops/_remove_batch_dim_ops.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias_copy.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias_copy_ops.h \
- /opt/libtorch/include/ATen/ops/_reshape_copy.h \
- /opt/libtorch/include/ATen/ops/_reshape_copy_ops.h \
  /opt/libtorch/include/ATen/ops/_reshape_from_tensor.h \
  /opt/libtorch/include/ATen/ops/_reshape_from_tensor_ops.h \
  /opt/libtorch/include/ATen/ops/_resize_output.h \
@@ -1466,18 +1412,12 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_sample_dirichlet_ops.h \
  /opt/libtorch/include/ATen/ops/_saturate_weight_to_fp16.h \
  /opt/libtorch/include/ATen/ops/_saturate_weight_to_fp16_ops.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_ops.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_forward.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_forward_ops.h \
  /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_math.h \
  /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_math_ops.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_ops.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_backward.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_ops.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_backward.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_scaled_mm.h \
- /opt/libtorch/include/ATen/ops/_scaled_mm_ops.h \
  /opt/libtorch/include/ATen/ops/_segment_reduce_backward.h \
  /opt/libtorch/include/ATen/ops/_segment_reduce_backward_ops.h \
  /opt/libtorch/include/ATen/ops/_shape_as_tensor.h \
@@ -1528,15 +1468,10 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_sparse_log_softmax_ops.h \
  /opt/libtorch/include/ATen/ops/_sparse_log_softmax_backward_data.h \
  /opt/libtorch/include/ATen/ops/_sparse_log_softmax_backward_data_ops.h \
- /opt/libtorch/include/ATen/ops/_sparse_mask_projection.h \
+ /opt/libtorch/include/ATen/ops/_sparse_mask_helper.h \
+ /opt/libtorch/include/ATen/ops/_sparse_mask_helper_ops.h \
  /opt/libtorch/include/ATen/ops/_sparse_mm.h \
  /opt/libtorch/include/ATen/ops/_sparse_mm_ops.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_ops.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward_ops.h \
- /opt/libtorch/include/ATen/ops/_sparse_semi_structured_linear.h \
- /opt/libtorch/include/ATen/ops/_sparse_semi_structured_linear_ops.h \
  /opt/libtorch/include/ATen/ops/_sparse_softmax.h \
  /opt/libtorch/include/ATen/ops/_sparse_softmax_ops.h \
  /opt/libtorch/include/ATen/ops/_sparse_softmax_backward_data.h \
@@ -1555,6 +1490,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_standard_gamma_ops.h \
  /opt/libtorch/include/ATen/ops/_standard_gamma_grad.h \
  /opt/libtorch/include/ATen/ops/_standard_gamma_grad_ops.h \
+ /opt/libtorch/include/ATen/ops/_symeig_helper.h \
+ /opt/libtorch/include/ATen/ops/_symeig_helper_ops.h \
  /opt/libtorch/include/ATen/ops/_test_ambiguous_defaults.h \
  /opt/libtorch/include/ATen/ops/_test_ambiguous_defaults_ops.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch.h \
@@ -1563,10 +1500,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_ops.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_copy.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_copy_ops.h \
- /opt/libtorch/include/ATen/ops/_test_check_tensor.h \
- /opt/libtorch/include/ATen/ops/_test_check_tensor_ops.h \
- /opt/libtorch/include/ATen/ops/_test_functorch_fallback.h \
- /opt/libtorch/include/ATen/ops/_test_functorch_fallback_ops.h \
  /opt/libtorch/include/ATen/ops/_test_optional_filled_intlist.h \
  /opt/libtorch/include/ATen/ops/_test_optional_filled_intlist_ops.h \
  /opt/libtorch/include/ATen/ops/_test_optional_floatlist.h \
@@ -1598,15 +1531,12 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_to_cpu.h \
  /opt/libtorch/include/ATen/ops/_to_cpu_ops.h \
  /opt/libtorch/include/ATen/ops/_to_dense.h \
- /opt/libtorch/include/ATen/ops/_to_sparse.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsc.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsr.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csc.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csr.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_semi_structured.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_semi_structured_ops.h \
+ /opt/libtorch/include/ATen/ops/_torch_cuda_cu_linker_symbol_op.h \
+ /opt/libtorch/include/ATen/ops/_torch_cuda_cu_linker_symbol_op_ops.h \
  /opt/libtorch/include/ATen/ops/_transform_bias_rescale_qkv.h \
  /opt/libtorch/include/ATen/ops/_transform_bias_rescale_qkv_ops.h \
+ /opt/libtorch/include/ATen/ops/_transformer_decoder_only_layer_fwd.h \
+ /opt/libtorch/include/ATen/ops/_transformer_decoder_only_layer_fwd_ops.h \
  /opt/libtorch/include/ATen/ops/_transformer_encoder_layer_fwd.h \
  /opt/libtorch/include/ATen/ops/_transformer_encoder_layer_fwd_ops.h \
  /opt/libtorch/include/ATen/ops/_trilinear.h \
@@ -1621,10 +1551,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_unique2_ops.h \
  /opt/libtorch/include/ATen/ops/_unpack_dual.h \
  /opt/libtorch/include/ATen/ops/_unpack_dual_ops.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index_ops.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index_put.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index_put_ops.h \
  /opt/libtorch/include/ATen/ops/_unsafe_view.h \
  /opt/libtorch/include/ATen/ops/_unsafe_view_ops.h \
  /opt/libtorch/include/ATen/ops/_upsample_bicubic2d_aa.h \
@@ -1953,6 +1879,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/detach_copy.h \
  /opt/libtorch/include/ATen/ops/detach_copy_ops.h \
  /opt/libtorch/include/ATen/ops/diag.h \
+ /opt/libtorch/include/ATen/ops/diag_backward.h \
+ /opt/libtorch/include/ATen/ops/diag_backward_ops.h \
  /opt/libtorch/include/ATen/ops/diag_embed.h \
  /opt/libtorch/include/ATen/ops/diagflat.h \
  /opt/libtorch/include/ATen/ops/diagonal.h \
@@ -1994,8 +1922,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/empty_ops.h \
  /opt/libtorch/include/ATen/ops/empty_like.h \
  /opt/libtorch/include/ATen/ops/empty_like_ops.h \
- /opt/libtorch/include/ATen/ops/empty_permuted.h \
- /opt/libtorch/include/ATen/ops/empty_permuted_ops.h \
  /opt/libtorch/include/ATen/ops/empty_quantized.h \
  /opt/libtorch/include/ATen/ops/empty_quantized_ops.h \
  /opt/libtorch/include/ATen/ops/empty_strided.h \
@@ -2426,8 +2352,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/max_pool1d_with_indices_ops.h \
  /opt/libtorch/include/ATen/ops/max_pool2d.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_ops.h \
- /opt/libtorch/include/ATen/ops/max_pool2d_backward.h \
- /opt/libtorch/include/ATen/ops/max_pool2d_backward_ops.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices_ops.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices_backward.h \
@@ -2497,10 +2421,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/mkldnn_reorder_conv2d_weight_ops.h \
  /opt/libtorch/include/ATen/ops/mkldnn_reorder_conv3d_weight.h \
  /opt/libtorch/include/ATen/ops/mkldnn_reorder_conv3d_weight_ops.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer_ops.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer_backward.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer_backward_ops.h \
  /opt/libtorch/include/ATen/ops/mm.h \
  /opt/libtorch/include/ATen/ops/mode.h \
  /opt/libtorch/include/ATen/ops/moveaxis.h \
@@ -2509,6 +2429,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/mps_convolution_backward_ops.h \
  /opt/libtorch/include/ATen/ops/mps_convolution_transpose_backward.h \
  /opt/libtorch/include/ATen/ops/mps_convolution_transpose_backward_ops.h \
+ /opt/libtorch/include/ATen/ops/mps_max_pool2d_backward.h \
+ /opt/libtorch/include/ATen/ops/mps_max_pool2d_backward_ops.h \
  /opt/libtorch/include/ATen/ops/mse_loss.h \
  /opt/libtorch/include/ATen/ops/mse_loss_ops.h \
  /opt/libtorch/include/ATen/ops/mse_loss_backward.h \
@@ -2582,7 +2504,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/nll_loss_nd_ops.h \
  /opt/libtorch/include/ATen/ops/nonzero.h \
  /opt/libtorch/include/ATen/ops/nonzero_numpy.h \
- /opt/libtorch/include/ATen/ops/nonzero_static.h \
  /opt/libtorch/include/ATen/ops/norm.h \
  /opt/libtorch/include/ATen/ops/norm_except_dim.h \
  /opt/libtorch/include/ATen/ops/norm_except_dim_ops.h \
@@ -2629,6 +2550,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/positive.h \
  /opt/libtorch/include/ATen/ops/pow.h \
  /opt/libtorch/include/ATen/ops/prelu.h \
+ /opt/libtorch/include/ATen/ops/prelu_backward.h \
  /opt/libtorch/include/ATen/ops/prod.h \
  /opt/libtorch/include/ATen/ops/promote_types.h \
  /opt/libtorch/include/ATen/ops/promote_types_ops.h \
@@ -2657,8 +2579,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/quantized_max_pool1d_ops.h \
  /opt/libtorch/include/ATen/ops/quantized_max_pool2d.h \
  /opt/libtorch/include/ATen/ops/quantized_max_pool2d_ops.h \
- /opt/libtorch/include/ATen/ops/quantized_max_pool3d.h \
- /opt/libtorch/include/ATen/ops/quantized_max_pool3d_ops.h \
  /opt/libtorch/include/ATen/ops/quantized_rnn_relu_cell.h \
  /opt/libtorch/include/ATen/ops/quantized_rnn_relu_cell_ops.h \
  /opt/libtorch/include/ATen/ops/quantized_rnn_tanh_cell.h \
@@ -2759,8 +2679,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/rsub_ops.h \
  /opt/libtorch/include/ATen/ops/scalar_tensor.h \
  /opt/libtorch/include/ATen/ops/scalar_tensor_ops.h \
- /opt/libtorch/include/ATen/ops/scaled_dot_product_attention.h \
- /opt/libtorch/include/ATen/ops/scaled_dot_product_attention_ops.h \
  /opt/libtorch/include/ATen/ops/scatter.h \
  /opt/libtorch/include/ATen/ops/scatter_add.h \
  /opt/libtorch/include/ATen/ops/scatter_reduce.h \
@@ -2986,18 +2904,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/svd.h \
  /opt/libtorch/include/ATen/ops/swapaxes.h \
  /opt/libtorch/include/ATen/ops/swapdims.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range_ops.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range_for_size.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range_for_size_ops.h \
- /opt/libtorch/include/ATen/ops/sym_numel.h \
- /opt/libtorch/include/ATen/ops/sym_numel_ops.h \
- /opt/libtorch/include/ATen/ops/sym_size.h \
- /opt/libtorch/include/ATen/ops/sym_size_ops.h \
- /opt/libtorch/include/ATen/ops/sym_storage_offset.h \
- /opt/libtorch/include/ATen/ops/sym_storage_offset_ops.h \
- /opt/libtorch/include/ATen/ops/sym_stride.h \
- /opt/libtorch/include/ATen/ops/sym_stride_ops.h \
+ /opt/libtorch/include/ATen/ops/symeig.h \
  /opt/libtorch/include/ATen/ops/t.h \
  /opt/libtorch/include/ATen/ops/t_copy.h \
  /opt/libtorch/include/ATen/ops/t_copy_ops.h \
@@ -3172,7 +3079,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/c10/util/strides.h \
  /opt/libtorch/include/ATen/core/Range.h \
  /opt/libtorch/include/c10/core/DynamicCast.h \
- /opt/libtorch/include/c10/util/Load.h \
+ /opt/libtorch/include/c10/util/Load.h /usr/include/c++/9/bitset \
  /opt/libtorch/include/ATen/ops/_aminmax_native.h \
  /opt/libtorch/include/ATen/ops/_amp_foreach_non_finite_check_and_unscale_native.h \
  /opt/libtorch/include/ATen/ops/_amp_update_scale_native.h \
@@ -3211,8 +3118,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_convolution_mode_native.h \
  /opt/libtorch/include/ATen/ops/_copy_from_native.h \
  /opt/libtorch/include/ATen/ops/_copy_from_and_resize_native.h \
- /opt/libtorch/include/ATen/ops/_cslt_compress_native.h \
- /opt/libtorch/include/ATen/ops/_cslt_sparse_mm_native.h \
  /opt/libtorch/include/ATen/ops/_ctc_loss_native.h \
  /opt/libtorch/include/ATen/ops/_ctc_loss_backward_native.h \
  /opt/libtorch/include/ATen/ops/_cudnn_ctc_loss_native.h \
@@ -3231,8 +3136,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_dimV_native.h \
  /opt/libtorch/include/ATen/ops/_dim_arange_native.h \
  /opt/libtorch/include/ATen/ops/_dirichlet_grad_native.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_backward_native.h \
- /opt/libtorch/include/ATen/ops/_efficient_attention_forward_native.h \
  /opt/libtorch/include/ATen/ops/_efficientzerotensor_native.h \
  /opt/libtorch/include/ATen/ops/_embedding_bag_native.h \
  /opt/libtorch/include/ATen/ops/_embedding_bag_backward_native.h \
@@ -3251,9 +3154,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_fft_c2c_native.h \
  /opt/libtorch/include/ATen/ops/_fft_c2r_native.h \
  /opt/libtorch/include/ATen/ops/_fft_r2c_native.h \
- /opt/libtorch/include/ATen/ops/_fill_mem_eff_dropout_mask_native.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_backward_native.h \
- /opt/libtorch/include/ATen/ops/_flash_attention_forward_native.h \
+ /opt/libtorch/include/ATen/ops/_flash_scaled_dot_product_attention_native.h \
  /opt/libtorch/include/ATen/ops/_foobar_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_abs_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_acos_native.h \
@@ -3263,9 +3164,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_asin_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_atan_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_ceil_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_max_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_clamp_min_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_copy_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_cos_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_cosh_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_div_native.h \
@@ -3275,7 +3173,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_expm1_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_floor_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_frac_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_lerp_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_lgamma_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_log_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_log10_native.h \
@@ -3286,11 +3183,9 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_mul_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_neg_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_norm_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_pow_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_reciprocal_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_round_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_sigmoid_native.h \
- /opt/libtorch/include/ATen/ops/_foreach_sign_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_sin_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_sinh_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_sqrt_native.h \
@@ -3299,14 +3194,9 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_foreach_tanh_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_trunc_native.h \
  /opt/libtorch/include/ATen/ops/_foreach_zero_native.h \
- /opt/libtorch/include/ATen/ops/_functional_assert_async_native.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range_native.h \
- /opt/libtorch/include/ATen/ops/_functional_sym_constrain_range_for_size_native.h \
  /opt/libtorch/include/ATen/ops/_fused_adam_native.h \
- /opt/libtorch/include/ATen/ops/_fused_adamw_native.h \
  /opt/libtorch/include/ATen/ops/_fused_dropout_native.h \
  /opt/libtorch/include/ATen/ops/_fused_moving_avg_obs_fq_helper_native.h \
- /opt/libtorch/include/ATen/ops/_fused_sdp_choice_native.h \
  /opt/libtorch/include/ATen/ops/_fw_primal_native.h \
  /opt/libtorch/include/ATen/ops/_fw_primal_copy_native.h \
  /opt/libtorch/include/ATen/ops/_gather_sparse_backward_native.h \
@@ -3320,9 +3210,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_index_put_impl_native.h \
  /opt/libtorch/include/ATen/ops/_indices_native.h \
  /opt/libtorch/include/ATen/ops/_indices_copy_native.h \
- /opt/libtorch/include/ATen/ops/_int_mm_native.h \
- /opt/libtorch/include/ATen/ops/_is_all_true_native.h \
- /opt/libtorch/include/ATen/ops/_is_any_true_native.h \
  /opt/libtorch/include/ATen/ops/_is_zerotensor_native.h \
  /opt/libtorch/include/ATen/ops/_linalg_check_errors_native.h \
  /opt/libtorch/include/ATen/ops/_linalg_det_native.h \
@@ -3343,7 +3230,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_logcumsumexp_native.h \
  /opt/libtorch/include/ATen/ops/_lstm_mps_native.h \
  /opt/libtorch/include/ATen/ops/_lu_with_info_native.h \
- /opt/libtorch/include/ATen/ops/_make_dep_token_native.h \
  /opt/libtorch/include/ATen/ops/_make_dual_native.h \
  /opt/libtorch/include/ATen/ops/_make_dual_copy_native.h \
  /opt/libtorch/include/ATen/ops/_make_per_channel_quantized_tensor_native.h \
@@ -3355,8 +3241,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_mkldnn_transpose_native.h \
  /opt/libtorch/include/ATen/ops/_mps_convolution_native.h \
  /opt/libtorch/include/ATen/ops/_mps_convolution_transpose_native.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit_native.h \
- /opt/libtorch/include/ATen/ops/_native_batch_norm_legit_no_training_native.h \
+ /opt/libtorch/include/ATen/ops/_mps_max_pool2d_native.h \
+ /opt/libtorch/include/ATen/ops/_native_decoder_only_multi_head_attention_native.h \
  /opt/libtorch/include/ATen/ops/_native_multi_head_attention_native.h \
  /opt/libtorch/include/ATen/ops/_neg_view_native.h \
  /opt/libtorch/include/ATen/ops/_neg_view_copy_native.h \
@@ -3367,9 +3253,10 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_mask_native.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_mask_left_aligned_native.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_from_tensor_list_native.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_layer_norm_native.h \
+ /opt/libtorch/include/ATen/ops/_nested_tensor_offsets_native.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_size_native.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_softmax_with_shape_native.h \
- /opt/libtorch/include/ATen/ops/_nested_tensor_storage_offsets_native.h \
  /opt/libtorch/include/ATen/ops/_nested_tensor_strides_native.h \
  /opt/libtorch/include/ATen/ops/_nested_view_from_buffer_native.h \
  /opt/libtorch/include/ATen/ops/_nested_view_from_buffer_copy_native.h \
@@ -3385,24 +3272,17 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_pdist_backward_native.h \
  /opt/libtorch/include/ATen/ops/_pdist_forward_native.h \
  /opt/libtorch/include/ATen/ops/_pin_memory_native.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel_native.h \
- /opt/libtorch/include/ATen/ops/_prelu_kernel_backward_native.h \
- /opt/libtorch/include/ATen/ops/_propagate_xla_data_native.h \
  /opt/libtorch/include/ATen/ops/_remove_batch_dim_native.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias_native.h \
  /opt/libtorch/include/ATen/ops/_reshape_alias_copy_native.h \
- /opt/libtorch/include/ATen/ops/_reshape_copy_native.h \
  /opt/libtorch/include/ATen/ops/_reshape_from_tensor_native.h \
  /opt/libtorch/include/ATen/ops/_resize_output_native.h \
  /opt/libtorch/include/ATen/ops/_rowwise_prune_native.h \
  /opt/libtorch/include/ATen/ops/_sample_dirichlet_native.h \
  /opt/libtorch/include/ATen/ops/_saturate_weight_to_fp16_native.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_native.h \
+ /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_forward_native.h \
  /opt/libtorch/include/ATen/ops/_scaled_dot_product_attention_math_native.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_native.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_efficient_attention_backward_native.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_native.h \
- /opt/libtorch/include/ATen/ops/_scaled_dot_product_flash_attention_backward_native.h \
- /opt/libtorch/include/ATen/ops/_scaled_mm_native.h \
  /opt/libtorch/include/ATen/ops/_segment_reduce_backward_native.h \
  /opt/libtorch/include/ATen/ops/_shape_as_tensor_native.h \
  /opt/libtorch/include/ATen/ops/_slow_conv2d_backward_native.h \
@@ -3430,11 +3310,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_sparse_csr_tensor_unsafe_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_log_softmax_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_log_softmax_backward_data_native.h \
- /opt/libtorch/include/ATen/ops/_sparse_mask_projection_native.h \
+ /opt/libtorch/include/ATen/ops/_sparse_mask_helper_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_mm_native.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_native.h \
- /opt/libtorch/include/ATen/ops/_sparse_mm_reduce_impl_backward_native.h \
- /opt/libtorch/include/ATen/ops/_sparse_semi_structured_linear_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_softmax_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_softmax_backward_data_native.h \
  /opt/libtorch/include/ATen/ops/_sparse_sparse_matmul_native.h \
@@ -3444,12 +3321,11 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_stack_native.h \
  /opt/libtorch/include/ATen/ops/_standard_gamma_native.h \
  /opt/libtorch/include/ATen/ops/_standard_gamma_grad_native.h \
+ /opt/libtorch/include/ATen/ops/_symeig_helper_native.h \
  /opt/libtorch/include/ATen/ops/_test_ambiguous_defaults_native.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_native.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_native.h \
  /opt/libtorch/include/ATen/ops/_test_autograd_multiple_dispatch_view_copy_native.h \
- /opt/libtorch/include/ATen/ops/_test_check_tensor_native.h \
- /opt/libtorch/include/ATen/ops/_test_functorch_fallback_native.h \
  /opt/libtorch/include/ATen/ops/_test_optional_filled_intlist_native.h \
  /opt/libtorch/include/ATen/ops/_test_optional_floatlist_native.h \
  /opt/libtorch/include/ATen/ops/_test_optional_intlist_native.h \
@@ -3466,13 +3342,9 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_to_copy_native.h \
  /opt/libtorch/include/ATen/ops/_to_cpu_native.h \
  /opt/libtorch/include/ATen/ops/_to_dense_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsc_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_bsr_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csc_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_csr_native.h \
- /opt/libtorch/include/ATen/ops/_to_sparse_semi_structured_native.h \
+ /opt/libtorch/include/ATen/ops/_torch_cuda_cu_linker_symbol_op_native.h \
  /opt/libtorch/include/ATen/ops/_transform_bias_rescale_qkv_native.h \
+ /opt/libtorch/include/ATen/ops/_transformer_decoder_only_layer_fwd_native.h \
  /opt/libtorch/include/ATen/ops/_transformer_encoder_layer_fwd_native.h \
  /opt/libtorch/include/ATen/ops/_trilinear_native.h \
  /opt/libtorch/include/ATen/ops/_triton_multi_head_attention_native.h \
@@ -3480,8 +3352,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/_unique_native.h \
  /opt/libtorch/include/ATen/ops/_unique2_native.h \
  /opt/libtorch/include/ATen/ops/_unpack_dual_native.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index_native.h \
- /opt/libtorch/include/ATen/ops/_unsafe_index_put_native.h \
  /opt/libtorch/include/ATen/ops/_unsafe_view_native.h \
  /opt/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_native.h \
  /opt/libtorch/include/ATen/ops/_upsample_bicubic2d_aa_meta.h \
@@ -3747,6 +3617,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/detach_native.h \
  /opt/libtorch/include/ATen/ops/detach_copy_native.h \
  /opt/libtorch/include/ATen/ops/diag_native.h \
+ /opt/libtorch/include/ATen/ops/diag_backward_native.h \
  /opt/libtorch/include/ATen/ops/diag_embed_native.h \
  /opt/libtorch/include/ATen/ops/diagflat_native.h \
  /opt/libtorch/include/ATen/ops/diagonal_native.h \
@@ -3777,7 +3648,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/embedding_sparse_backward_native.h \
  /opt/libtorch/include/ATen/ops/empty_native.h \
  /opt/libtorch/include/ATen/ops/empty_like_native.h \
- /opt/libtorch/include/ATen/ops/empty_permuted_native.h \
  /opt/libtorch/include/ATen/ops/empty_quantized_native.h \
  /opt/libtorch/include/ATen/ops/empty_strided_native.h \
  /opt/libtorch/include/ATen/ops/eq_native.h \
@@ -4116,7 +3986,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/max_pool1d_native.h \
  /opt/libtorch/include/ATen/ops/max_pool1d_with_indices_native.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_native.h \
- /opt/libtorch/include/ATen/ops/max_pool2d_backward_native.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices_native.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices_meta.h \
  /opt/libtorch/include/ATen/ops/max_pool2d_with_indices_backward_native.h \
@@ -4161,8 +4030,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/mkldnn_max_pool3d_backward_native.h \
  /opt/libtorch/include/ATen/ops/mkldnn_reorder_conv2d_weight_native.h \
  /opt/libtorch/include/ATen/ops/mkldnn_reorder_conv3d_weight_native.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer_native.h \
- /opt/libtorch/include/ATen/ops/mkldnn_rnn_layer_backward_native.h \
  /opt/libtorch/include/ATen/ops/mm_native.h \
  /opt/libtorch/include/ATen/ops/mm_meta.h \
  /opt/libtorch/include/ATen/ops/mode_native.h \
@@ -4170,6 +4037,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/movedim_native.h \
  /opt/libtorch/include/ATen/ops/mps_convolution_backward_native.h \
  /opt/libtorch/include/ATen/ops/mps_convolution_transpose_backward_native.h \
+ /opt/libtorch/include/ATen/ops/mps_max_pool2d_backward_native.h \
  /opt/libtorch/include/ATen/ops/mse_loss_native.h \
  /opt/libtorch/include/ATen/ops/mse_loss_meta.h \
  /opt/libtorch/include/ATen/ops/mse_loss_backward_native.h \
@@ -4226,7 +4094,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/nll_loss_nd_native.h \
  /opt/libtorch/include/ATen/ops/nonzero_native.h \
  /opt/libtorch/include/ATen/ops/nonzero_numpy_native.h \
- /opt/libtorch/include/ATen/ops/nonzero_static_native.h \
  /opt/libtorch/include/ATen/ops/norm_native.h \
  /opt/libtorch/include/ATen/ops/norm_meta.h \
  /opt/libtorch/include/ATen/ops/norm_except_dim_native.h \
@@ -4261,6 +4128,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/pow_native.h \
  /opt/libtorch/include/ATen/ops/pow_meta.h \
  /opt/libtorch/include/ATen/ops/prelu_native.h \
+ /opt/libtorch/include/ATen/ops/prelu_backward_native.h \
  /opt/libtorch/include/ATen/ops/prod_native.h \
  /opt/libtorch/include/ATen/ops/prod_meta.h \
  /opt/libtorch/include/ATen/ops/promote_types_native.h \
@@ -4281,7 +4149,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/quantized_lstm_cell_native.h \
  /opt/libtorch/include/ATen/ops/quantized_max_pool1d_native.h \
  /opt/libtorch/include/ATen/ops/quantized_max_pool2d_native.h \
- /opt/libtorch/include/ATen/ops/quantized_max_pool3d_native.h \
  /opt/libtorch/include/ATen/ops/quantized_rnn_relu_cell_native.h \
  /opt/libtorch/include/ATen/ops/quantized_rnn_tanh_cell_native.h \
  /opt/libtorch/include/ATen/ops/rad2deg_native.h \
@@ -4359,7 +4226,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/rsqrt_meta.h \
  /opt/libtorch/include/ATen/ops/rsub_native.h \
  /opt/libtorch/include/ATen/ops/scalar_tensor_native.h \
- /opt/libtorch/include/ATen/ops/scaled_dot_product_attention_native.h \
  /opt/libtorch/include/ATen/ops/scatter_native.h \
  /opt/libtorch/include/ATen/ops/scatter_meta.h \
  /opt/libtorch/include/ATen/ops/scatter_add_native.h \
@@ -4549,12 +4415,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/ops/svd_native.h \
  /opt/libtorch/include/ATen/ops/swapaxes_native.h \
  /opt/libtorch/include/ATen/ops/swapdims_native.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range_native.h \
- /opt/libtorch/include/ATen/ops/sym_constrain_range_for_size_native.h \
- /opt/libtorch/include/ATen/ops/sym_numel_native.h \
- /opt/libtorch/include/ATen/ops/sym_size_native.h \
- /opt/libtorch/include/ATen/ops/sym_storage_offset_native.h \
- /opt/libtorch/include/ATen/ops/sym_stride_native.h \
+ /opt/libtorch/include/ATen/ops/symeig_native.h \
  /opt/libtorch/include/ATen/ops/t_native.h \
  /opt/libtorch/include/ATen/ops/t_copy_native.h \
  /opt/libtorch/include/ATen/ops/take_native.h \
@@ -4684,7 +4545,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/ATen/core/dispatch/DispatchKeyExtractor.h \
  /opt/libtorch/include/c10/util/Bitset.h \
  /opt/libtorch/include/c10/util/LeftRight.h \
- /opt/libtorch/include/c10/util/Synchronized.h /usr/include/c++/9/thread \
+ /opt/libtorch/include/c10/util/Synchronized.h \
+ /usr/include/c++/9/shared_mutex \
  /opt/libtorch/include/torch/csrc/api/include/torch/data/detail/data_shuttle.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/data/detail/queue.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/data/detail/sequencers.h \
@@ -4720,6 +4582,7 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/torch/csrc/jit/ir/scope.h \
  /opt/libtorch/include/torch/csrc/jit/runtime/operator.h \
  /opt/libtorch/include/torch/csrc/jit/runtime/operator_options.h \
+ /opt/libtorch/include/torch/csrc/utils/disallow_copy.h \
  /opt/libtorch/include/torch/csrc/utils/schema_info.h \
  /opt/libtorch/include/ATen/core/enum_type.h \
  /opt/libtorch/include/ATen/core/interned_strings.h \
@@ -4750,7 +4613,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/torch/csrc/api/include/torch/fft.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/jit.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/linalg.h \
- /opt/libtorch/include/torch/csrc/api/include/torch/mps.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/nested.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/nn.h \
  /opt/libtorch/include/torch/csrc/api/include/torch/nn/cloneable.h \
@@ -4769,9 +4631,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/torch/csrc/autograd/profiler_kineto.h \
  /opt/libtorch/include/torch/csrc/profiler/api.h \
  /opt/libtorch/include/torch/csrc/profiler/orchestration/observer.h \
- /opt/libtorch/include/torch/csrc/profiler/events.h \
- /opt/libtorch/include/torch/csrc/profiler/stubs/base.h \
- /opt/libtorch/include/c10/util/strong_type.h \
  /opt/libtorch/include/torch/csrc/profiler/util.h \
  /usr/lib/gcc/x86_64-linux-gnu/9/include/x86intrin.h \
  /usr/lib/gcc/x86_64-linux-gnu/9/include/ia32intrin.h \
@@ -4946,9 +4805,6 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/caffe2/serialize/istream_adapter.h \
  /opt/libtorch/include/caffe2/serialize/read_adapter_interface.h \
  /opt/libtorch/include/caffe2/serialize/versions.h \
- /opt/libtorch/include/torch/csrc/jit/serialization/pickle.h \
- /opt/libtorch/include/torch/csrc/jit/serialization/pickler.h \
- /opt/libtorch/include/c10/util/FbcodeMaps.h \
  /opt/libtorch/include/torch/csrc/jit/serialization/unpickler.h \
  /opt/libtorch/include/torch/csrc/jit/frontend/script_type_parser.h \
  /opt/libtorch/include/torch/csrc/jit/frontend/resolver.h \
@@ -4961,6 +4817,8 @@ CMakeFiles/out.dir/main.cpp.o: \
  /opt/libtorch/include/torch/csrc/jit/frontend/schema_matching.h \
  /opt/libtorch/include/torch/csrc/jit/frontend/versioned_symbols.h \
  /opt/libtorch/include/torch/csrc/jit/frontend/tree_views.h \
+ /opt/libtorch/include/torch/csrc/jit/serialization/pickler.h \
+ /opt/libtorch/include/torch/csrc/jit/serialization/pickle.h \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/src/core_image_align_libtorch.cpp \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/lib_image_fusion/include/core_image_align_libtorch.h \
  /circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/utils/include/util_timer.h \

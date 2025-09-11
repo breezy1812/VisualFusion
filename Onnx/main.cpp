@@ -462,10 +462,10 @@ int main(int argc, char **argv)
     cout << "\tSmooth Alpha: " << smooth_alpha << endl;
   }
 
-  // ----- 創建共用的模型實例（只初始化一次，包含warm-up） -----
-  std::cout << "\n=== Initializing shared model instances ===" << std::endl;
+  // ----- 創建共用的非模型實例（模型將在每輪重新初始化） -----
+  std::cout << "\n=== Initializing shared non-model instances ===" << std::endl;
   
-  // Create shared instances that will be used for all images
+  // Create shared instances that will be used for all images (除了模型)
   auto image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
 
   auto image_resizer = core::ImageResizer::create_instance(
@@ -485,22 +485,42 @@ int main(int argc, char **argv)
       core::ImagePerspective::Param()
           .set_check(perspective_check, perspective_accuracy, perspective_distance));
 
-  // =============== 共用的對齊模型實例（只初始化一次，包含warm-up） ===============
-  std::cout << "Creating shared ImageAlign model instance..." << std::endl;
-  auto image_align = core::ImageAlignONNX::create_instance(
-      core::ImageAlignONNX::Param()
-          .set_size(pred_w, pred_h, out_w, out_h)
-          .set_model(device, model_path, pred_mode)
-          .set_bias(0, 0));
-  
-  std::cout << "Model initialization and warm-up completed. Ready to process all images." << std::endl;
+  // =============== 注意：模型實例將在每輪重新創建 ===============
+  std::cout << "Non-model instances initialized. Model will be recreated each round." << std::endl;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ----- Start Processing All Files -----
   // ===== 臨時測試功能：運行1輪所有圖片來測試一致性（之後可以刪除） =====
-  const int test_rounds = 1; // 測試輪數（之後可以刪除這個變數）
+  const int test_rounds = 300; // 測試輪數（之後可以刪除這個變數）
   
+
+
+
+
   for (int round = 1; round <= test_rounds; round++) {
     std::cout << "\n=== Processing Round " << round << "/" << test_rounds << " ===" << std::endl;
+    
+    // =============== 每輪重新初始化模型實例（清除、重新讀取、warm-up） ===============
+    std::cout << "Round " << round << ": Creating new ImageAlign model instance..." << std::endl;
+    auto image_align = core::ImageAlignONNX::create_instance(
+        core::ImageAlignONNX::Param()
+            .set_size(pred_w, pred_h, out_w, out_h)
+            .set_model(device, model_path, pred_mode)
+            .set_bias(0, 0));
+    
+    std::cout << "Round " << round << ": Model initialization and warm-up completed." << std::endl;
     
     // 在每輪開始時在CSV中加入分隔符（之後可以刪除這個功能）
     std::ofstream csv_separator("image_feature_mse_errors.csv", std::ios::app);
@@ -629,14 +649,14 @@ int main(int argc, char **argv)
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
         // resize到320x240
-        cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(320, 240));
-        cv::resize(ir, ir_resized, cv::Size(320, 240));
+        cv::Mat eo_final, ir_final;
+        cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
+        cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
         
         // 3. 兩張圖片經過gray並擴增到3channel
         cv::Mat gray_eo, gray_ir;
-        cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
-        cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(eo_final, gray_eo, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(ir_final, gray_ir, cv::COLOR_BGR2GRAY);
         
         // 擴增到3通道 (雖然模型只用單通道，但為了流程一致性)
         // cv::Mat gray_eo, gray_ir;
@@ -648,7 +668,6 @@ int main(int argc, char **argv)
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
         
-        
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
         
         // 6. kps1和kps2經過ransac(8.0 ,800,0.98)之後得到縮減後的kps1,kps2
@@ -659,13 +678,12 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 1000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
               refined_H = H;
-              // 過濾 inlier 特徵點
+              // 先過濾 inlier 特徵點
               std::vector<cv::Point2i> filtered_eo_pts, filtered_ir_pts;
               for (int i = 0; i < mask.rows; i++) {
                 if (mask.at<uchar>(i, 0) > 0) {
@@ -675,16 +693,36 @@ int main(int argc, char **argv)
               }
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
-              std::cout << "RANSAC refined: " << eo_pts.size() << " inliers from " << mask.rows << " total points" << std::endl;
+              
+              // // 使用過濾後的特徵點重新計算 homography (最小二乘法)
+              // if (eo_pts.size() >= 4) {
+              //   std::vector<cv::Point2f> refined_eo_pts_f, refined_ir_pts_f;
+              //   for (const auto& pt : eo_pts) refined_eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+              //   for (const auto& pt : ir_pts) refined_ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
+                
+              //   // 使用最小二乘法重新計算 homography (特徵點已過濾，不需要再用RANSAC)
+              //   cv::Mat H_refined = cv::findHomography(refined_eo_pts_f, refined_ir_pts_f, 0); // 0 = 最小二乘法
+              //   if (!H_refined.empty() && cv::determinant(H_refined) > 1e-6 && cv::determinant(H_refined) < 1e6) {
+              //     refined_H = H_refined;
+              //     std::cout << "    -> 使用 " << eo_pts.size() << " 個過濾後特徵點重新計算 homography" << std::endl;
+              //   } else {
+              //     refined_H = H; // 重新計算失敗，使用原始RANSAC結果
+              //     std::cout << "    -> 重新計算失敗，使用原始RANSAC結果" << std::endl;
+              //   }
+              // } else {
+              //   refined_H = H; // 特徵點不足，使用原始RANSAC結果
+              //   std::cout << "    -> 過濾後特徵點不足，使用原始RANSAC結果" << std::endl;
+              // }
             }
           }
         }
         // 使用 refined homography
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        
         // 使用final_output_size進行後續處理
-        cv::Mat eo_final, ir_final;
-        cv::resize(eo_resized, eo_final, cv::Size(out_w, out_h));
-        cv::resize(ir_resized, ir_final, cv::Size(out_w, out_h));
+        // cv::Mat eo_final, ir_final;
+        // cv::resize(eo_resized, eo_final, cv::Size(out_w, out_h));
+        // cv::resize(ir_resized, ir_final, cv::Size(out_w, out_h));
         
         // ========== 圖片模式下組合顯示 ==========
         // 準備 temp_pair：左邊IR，右邊EO經過homo變換
@@ -1013,6 +1051,11 @@ int main(int argc, char **argv)
       writer_fusion.release(); // 新增：釋放融合影片
 
     // return 0;
+    
+    // =============== 每輪結束時清理模型實例 ===============
+    std::cout << "Round " << round << ": Cleaning up model instance for next round..." << std::endl;
+    // C++ 的 smart pointer 會在作用域結束時自動清理
+    // image_align 在下一次迴圈開始時會被重新創建
   }
   
   // ===== 結束測試輪數迴圈（之後可以刪除） =====
