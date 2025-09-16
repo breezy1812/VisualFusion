@@ -6,7 +6,7 @@ import onnxruntime as ort
 print("=== ONNX FP16 模型測試腳本 ===")
 
 # 使用新導出的 FP16 ONNX 模型
-output_path = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel/zfp16_op12.onnx"
+output_path = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/fp32_cuda.onnx"
 print(f"載入模型: {output_path}")
 onnx_model = onnx.load(output_path)
 
@@ -21,14 +21,14 @@ print(f"預處理圖片，尺寸: {width}x{height}")
 img1 = cv2.imread(img1_path)
 img1 = cv2.resize(img1, (width, height))
 img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-# 將輸入資料型別改為 float16
-img1 = img1.astype(np.float16) / 255.0
+# 將輸入資料型別改為 float32 並正規化到 [0,1]
+img1 = img1.astype(np.float32) / 255.0
 
 img2 = cv2.imread(img2_path)
 img2 = cv2.resize(img2, (width, height))
 img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-# 將輸入資料型別改為 float16
-img2 = img2.astype(np.float16) / 255.0
+# 將輸入資料型別改為 float32 並正規化到 [0,1]
+img2 = img2.astype(np.float32) / 255.0
 
 img1 = img1[None, None]
 img2 = img2[None, None]

@@ -22,10 +22,10 @@ print(f"建立輸入張量，尺寸: {height}x{width}")
 torch_input_1 = torch.randn(1, 1, height, width).to(device)
 torch_input_2 = torch.randn(1, 1, height, width).to(device)
 
-output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnxModel"
+output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/"
 os.makedirs(output_dir, exist_ok=True)
 
-output_path = f"{output_dir}/SemLA_onnx_opset17_fixed1200pts_cuda.onnx"
+output_path = f"{output_dir}/SemLA_onnx_opset12_fixed1200pts_cuda.onnx"
 
 print(f"開始轉換ONNX模型...")
 print(f"輸出路徑: {output_path}")

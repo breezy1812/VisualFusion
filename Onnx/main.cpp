@@ -650,8 +650,11 @@ int main(int argc, char **argv)
         }
         // resize到320x240
         cv::Mat eo_final, ir_final;
-        cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
-        cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
+        // cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
+        // cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
+        cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_AREA);
+        cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_AREA);
+        
         
         // 3. 兩張圖片經過gray並擴增到3channel
         cv::Mat gray_eo, gray_ir;

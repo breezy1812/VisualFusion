@@ -63,7 +63,7 @@ set(CMAKE_CUDA_COMPILER_LIBRARY_ROOT "/usr/local/cuda")
 
 set(CMAKE_CUDA_ARCHITECTURES_ALL "35-real;37-real;50-real;52-real;53-real;60-real;61-real;62-real;70-real;72-real;75-real;80-real;86-real;87")
 set(CMAKE_CUDA_ARCHITECTURES_ALL_MAJOR "35-real;50-real;60-real;70-real;80")
-set(CMAKE_CUDA_ARCHITECTURES_NATIVE "61-real")
+set(CMAKE_CUDA_ARCHITECTURES_NATIVE "86-real")
 
 set(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES "/usr/local/cuda/targets/x86_64-linux/include")
 

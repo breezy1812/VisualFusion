@@ -31,7 +31,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 # 直接導出FP16 ONNX模型
 # 使用一個新名稱以避免與舊模型混淆
-fp16_output_path = f"{output_dir}/zfp16_op12_backup.onnx"
+fp16_output_path = f"{output_dir}/zfp16_op12_test.onnx"
 
 print(f"直接轉換為FP16 ONNX模型...")
 print(f"最終路徑: {fp16_output_path}")

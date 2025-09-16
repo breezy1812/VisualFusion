@@ -5,7 +5,7 @@
 
     "device": "cuda",
     "pred_mode": "fp16",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/zfp16_op12.onnx",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/zfp16_op12_test.onnx",
 
     "VideoCut":true,
     "Vcut_x": 870,

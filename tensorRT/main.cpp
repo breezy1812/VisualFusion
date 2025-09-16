@@ -388,7 +388,6 @@ int main(int argc, char **argv)
   // 新增：插值方式
   std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
   bool isUsingCubic = (fusion_interpolation == "cubic");
-  int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
 
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
@@ -572,8 +571,10 @@ int main(int argc, char **argv)
         }
         // resize
         cv::Mat eo_resized, ir_resized;
-        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, interp);
-        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, interp);
+        cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+        cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+        // cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
+        // cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
         // 轉灰階
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
@@ -603,7 +604,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 1000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
