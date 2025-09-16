@@ -127,7 +127,7 @@ class PyTorchToTensorRTConverter:
         # 步驟 2: 從 ONNX 轉換為 TensorRT
         precision_str = "fp16" if use_fp16 else "fp32"
         if trt_path is None:
-            trt_path = f"./testtrt_semla_{precision_str}_op{opset_version}.engine"
+            trt_path = f"./trt_semla_{precision_str}_op{opset_version}.engine"
             
         print(f"\n🔄 轉換 ONNX 為 TensorRT 引擎...")
         success = self.convert_onnx_to_trt(
@@ -310,7 +310,7 @@ def main():
                        help='Max workspace size in MB (default: 1024)')
 
     args = parser.parse_args()
-
+    #py32 onnx32 trt16
     print("🎯 PyTorch/ONNX to TensorRT Conversion Tool")
     print("=" * 60)
     print("📋 Configuration:")
