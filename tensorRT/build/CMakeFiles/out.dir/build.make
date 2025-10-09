@@ -195,7 +195,7 @@ out: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.2.0
 out: /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.2.0
 out: /usr/lib/x86_64-linux-gnu/libopencv_videoio.so.4.2.0
 out: /usr/lib/x86_64-linux-gnu/libopencv_dnn.so.4.2.0
-out: /opt/TensorRT-8.6.1.6/lib/libnvinfer.so
+out: /opt/TensorRT-8.4.3.1/lib/libnvinfer.so
 out: /usr/local/cuda/lib64/libcudart_static.a
 out: /usr/lib/x86_64-linux-gnu/librt.so
 out: /usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.2.0

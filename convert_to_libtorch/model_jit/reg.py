@@ -1,5 +1,7 @@
 import torch
-
+import os
+import random
+import numpy as np
 from torch import nn
 from .utils import CBR, DWConv, MLP, MLP2, DWT_2D, StructureAttention
 from .utils import (
@@ -8,6 +10,48 @@ from .utils import (
     n_c_h_w_2_n_c_hw,
     n_hw_c_2_n_c_h_w,
 )
+
+# # ============================================================================
+# # 🔒 完整的確定性設置（確保 RTX 30 系列與 GTX 1080 Ti 一致）
+# # 直接在模塊導入時執行，無需函數包裝，避免 JIT 轉換問題
+# # ============================================================================
+
+# 1. Python 隨機種子
+random.seed(42)
+
+# 2. NumPy 隨機種子
+np.random.seed(42)
+
+# 3. PyTorch CPU 隨機種子
+torch.manual_seed(42)
+
+# 4. PyTorch GPU 隨機種子
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
+# 5. 強制使用確定性算法
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+# ============================================================================
+# 🔥 關鍵：禁用 TF32（RTX 30 系列的關鍵設置）
+# ============================================================================
+# TF32 在 Ampere 架構（RTX 3070/3080/3090）上默認啟用
+# 會導致 BatchNorm2d 計算結果與 Pascal 架構（GTX 1080 Ti）不一致
+
+# 禁用 CUDA matmul 的 TF32
+if hasattr(torch.backends.cuda, 'matmul'):
+    torch.backends.cuda.matmul.allow_tf32 = False
+
+# 禁用 cuDNN 的 TF32
+if hasattr(torch.backends.cudnn, 'allow_tf32'):
+    torch.backends.cudnn.allow_tf32 = False
+
+# 6. 設置環境變量（禁用所有異步和並行優化）
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # 同步執行，禁用異步優化
+os.environ['PYTHONHASHSEED'] = '42'
 
 
 class SemLA_Reg(nn.Module):
@@ -47,11 +91,13 @@ class SemLA_Reg(nn.Module):
 
     def forward(self, x):
         # Extraction of registration features
+        
         x0 = self.reg0(x)
         x1 = self.reg1(self.dwt(x0))
         x2 = self.reg2(self.dwt(x1))
         x3 = self.reg3(self.dwt(x2))
         feat_reg = self.pred_reg(x3)
+        # return x1, x1
 
         # trace modify
         bs2 = feat_reg.shape[0] //2
@@ -65,13 +111,11 @@ class SemLA_Reg(nn.Module):
         feat_sa_ir = self.sa2(feat_sa_ir)
         feat_sa_ir = self.sa3(feat_sa_ir)
         feat_sa_ir = self.pred_sa(feat_sa_ir)
-
+        # return feat_sa_ir, feat_sa_ir
+    
         # Flatten
-        # feat_sa_ir_flatten = rearrange(feat_sa_ir, "n c h w -> n c (h w)")
         feat_sa_ir_flatten = n_c_h_w_2_n_c_hw(feat_sa_ir)
-        # feat_reg_vi_flatten_ = rearrange(feat_reg_vi, "n c h w -> n (h w) c")
         feat_reg_vi_flatten_ = n_c_h_w_2_n_hw_c(feat_reg_vi)
-        # feat_reg_ir_flatten = rearrange(feat_reg_ir, "n c h w -> n (h w) c")
         feat_reg_ir_flatten = n_c_h_w_2_n_hw_c(feat_reg_ir)
 
         # Feature Similarity Calculation
@@ -92,7 +136,6 @@ class SemLA_Reg(nn.Module):
         # Calibration of semantic features of visible images
         feat_reg_vi_ca = self.csc0(feat_reg_vi_flatten_, attention * 1.5)
         feat_reg_vi_ca = self.csc1(feat_reg_vi_ca, attention * 1.5)
-        # feat_reg_vi_ca = rearrange(feat_reg_vi_ca, "n (h w) c -> n c h w", h=h, w=w)
         feat_reg_vi_ca = n_hw_c_2_n_c_h_w(feat_reg_vi_ca, h=h, w=w)
 
         # Predicting semantic awareness maps for visible images
@@ -108,6 +151,8 @@ class SemLA_Reg(nn.Module):
         feat_reg_ir_final = feat_reg_ir + feat_reg_ir_str
 
         return feat_reg_vi_final, feat_reg_ir_final, feat_sa_vi, feat_sa_ir
+        return feat_sa_vi, feat_sa_ir
+        # return feat_reg_vi_final, feat_reg_ir_final
 
 
 class JConv(nn.Module):
@@ -121,10 +166,11 @@ class JConv(nn.Module):
         super(JConv, self).__init__()
         self.feat_trans = CBR(in_channels, out_channels)
         self.dwconv = DWConv(out_channels)
-        self.norm = nn.BatchNorm2d(out_channels, eps=1e-5)
+        self.norm = nn.BatchNorm2d(out_channels, eps=1e-5)  # 使用官方 BatchNorm2d
         self.mlp = MLP(out_channels, bias=True)
 
     def forward(self, x):
+        # 確定性設置已在模塊導入時完成
         x = self.feat_trans(x)
         x = x + self.dwconv(x)
         out = self.norm(x)
@@ -189,7 +235,6 @@ class SemanticStructureRepresentation(nn.Module):
 
         h = grid.shape[1]
         w = grid.shape[2]
-        # grid = rearrange(grid, "n h w c -> n c h w")
         grid = n_h_w_c_2_n_c_h_w(grid)
 
         # Embedding position information into a high-dimensional space
@@ -202,17 +247,13 @@ class SemanticStructureRepresentation(nn.Module):
         semantic_grid_vi = self.semantic_embedding(semantic_grid_vi)
         semantic_grid_ir = self.semantic_embedding(semantic_grid_ir)
 
-        # semantic_grid_vi = rearrange(semantic_grid_vi, "n c h w -> n (h w) c")
         semantic_grid_vi = n_c_h_w_2_n_hw_c(semantic_grid_vi)
-        # semantic_grid_ir = rearrange(semantic_grid_ir, "n c h w -> n (h w) c")
         semantic_grid_ir = n_c_h_w_2_n_hw_c(semantic_grid_ir)
 
         semantic_grid_vi = self.attention(semantic_grid_vi)
         semantic_grid_ir = self.attention(semantic_grid_ir)
 
-        # semantic_grid_vi = rearrange(semantic_grid_vi, "n (h w) c -> n c h w", h=h, w=w)
         semantic_grid_vi = n_hw_c_2_n_c_h_w(semantic_grid_vi, h=h, w=w)
-        # semantic_grid_ir = rearrange(semantic_grid_ir, "n (h w) c -> n c h w", h=h, w=w)
         semantic_grid_ir = n_hw_c_2_n_c_h_w(semantic_grid_ir, h=h, w=w)
 
         return semantic_grid_vi, semantic_grid_ir

@@ -1,11 +1,11 @@
 {
     "input_dir": "/circ330/videodata/Version3",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/output",
-    "output": true,
+    "output": false,
 
     "device": "cuda",
-    "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/GPU30s/trt2_semla_fp32_op12.engine",
+    "pred_mode": "fp16",
+    "model_path": "/circ330/forgithub/VisualFusion_libtorch/tensorRT/model/GPU30s/trt_semla_fp16_op12.engine",
 
     "VideoCut":true,
     "Vcut_x": 870,

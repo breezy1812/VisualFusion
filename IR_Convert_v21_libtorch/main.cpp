@@ -3,12 +3,17 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <pthread.h>
 #include <filesystem>
 #include <cmath>
 #include <limits>
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>  // ADDED: 確保包含homography相關函數
+
+// LibTorch 相關標頭（用於 TF32 設置）
+#include <torch/torch.h>
+#include <ATen/Context.h>
 
 #include "lib_image_fusion/include/core_image_to_gray.h"
 #include "lib_image_fusion/src/core_image_to_gray.cpp"
@@ -22,12 +27,6 @@
 #include "lib_image_fusion/include/core_image_perspective.h"
 #include "lib_image_fusion/src/core_image_perspective.cpp"
 
-// =============== 選擇版本：註解掉不需要的版本 ===============
-// 版本 1: ONNX 版本
-// #include "lib_image_fusion/include/core_image_align_onnx.h"
-// #include "lib_image_fusion/src/core_image_align_onnx.cpp"
-
-// 版本 2: LibTorch 版本 (註解掉以使用 ONNX)
 #include "lib_image_fusion/include/core_image_align_libtorch.h"
 #include "lib_image_fusion/src/core_image_align_libtorch.cpp"
 
@@ -337,6 +336,15 @@ double calcFeaturePointMSE(const cv::Mat& homo_pred, const cv::Mat& homo_gt,
 
 int main(int argc, char **argv)
 {
+  // ============================================================================
+  // 🔥 關鍵設置：在程序最開始禁用 TF32（確保跨 GPU 架構一致性）
+  // ============================================================================
+  #ifdef USE_CUDA
+  at::globalContext().setAllowTF32CuBLAS(false);
+  at::globalContext().setAllowTF32CuDNN(false);
+  std::cout << "✅ TF32 已禁用（確保 GTX 1080 Ti / RTX 3070 一致性）" << std::endl;
+  #endif
+
   // 新增: 追蹤特徵點座標範圍
   int min_x = INT_MAX, max_x = INT_MIN;
   int min_y = INT_MAX, max_y = INT_MIN;
@@ -344,7 +352,7 @@ int main(int argc, char **argv)
 
   // ----- Config -----
   json config;
-  string config_path = "./config/config.json";
+  string config_path = "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/config/config.json";
   {
     // check argument
     if (argc > 1)
@@ -494,18 +502,7 @@ int main(int argc, char **argv)
   auto shared_image_perspective = core::ImagePerspective::create_instance(
       core::ImagePerspective::Param()
           .set_check(perspective_check, perspective_accuracy, perspective_distance));
-  std::cout << "Non-model instances initialized. Model will be created once." << std::endl;
-
-  // ----- 初始化模型（只執行一次） -----
-  std::cout << "Creating ImageAlign model instance..." << std::endl;
-  auto image_align = core::ImageAlign::create_instance(
-      core::ImageAlign::Param()
-          .set_size(pred_w, pred_h, out_w, out_h)
-          .set_net(device, model_path, pred_mode)
-          .set_distance(align_distance_line, align_distance_last, 20)
-          .set_angle(align_angle_mean, align_angle_sort)
-          .set_bias(0, 0));
-  std::cout << "Model initialization and warm-up completed." << std::endl;
+  std::cout << "Non-model instances initialized. Model will be created per image." << std::endl;
 
   // ----- 處理所有圖片 -----
   for (const auto &file : directory_iterator(input_dir))
@@ -610,10 +607,17 @@ int main(int argc, char **argv)
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
         
+        // 提取圖片名稱用於識別
+        string file = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        string img_name = file.substr(0, file.find_last_of("."));
+        // 如果檔名包含_EO，去除它
+        if (img_name.find("_EO") != string::npos) {
+          img_name = img_name.substr(0, img_name.find("_EO"));
+        }
+
         cv::Mat eo_resized, ir_resized;
         cv::resize(eo, eo_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
         cv::resize(ir, ir_resized, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
-        //
         // cv::resize(eo, eo_resized, cv::Size(out_w, out_h));
         // cv::resize(ir, ir_resized, cv::Size(out_w, out_h));
         
@@ -623,22 +627,26 @@ int main(int argc, char **argv)
         cv::cvtColor(eo_resized, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_resized, gray_ir, cv::COLOR_BGR2GRAY);
         
+        
+        // ===== 結束新增部分 =====
+        
+        // ----- 為每張圖片創建新的model實例 -----
+        std::cout << "\n=== Creating fresh model instance for image: " << img_name << " ===" << std::endl;
+        auto image_align = core::ImageAlign::create_instance(
+            core::ImageAlign::Param()
+                .set_size(pred_w, pred_h, out_w, out_h)
+                .set_net(device, model_path, pred_mode)
+                .set_distance(align_distance_line, align_distance_last, 20)
+                .set_angle(align_angle_mean, align_angle_sort)
+                .set_bias(0, 0));
+        std::cout << "Fresh model initialization completed for " << img_name << std::endl;
+        
         // 注意: FP16轉換由LibTorch內部處理，不需要在OpenCV層面轉換
         // 單次model對齊
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
-        // 提取檔案名稱用於CSV記錄
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
-        }
-        // 移除 _EO 後綴（與ONNX版本一致）
-        size_t eo_pos = img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
-        }
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single, img_name);
+        
         
         // ========== RANSAC 濾除 outlier，提升精度 ==========
         cv::Mat refined_H = M_single.clone();
@@ -665,6 +673,7 @@ int main(int argc, char **argv)
               // 更新特徵點為inliers（用於誤差計算）
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
+              
             }
           }
         }
@@ -732,10 +741,9 @@ int main(int argc, char **argv)
           csv_file.open(csv_filename, std::ios::app);
           
           if (!file_exists) {
-            csv_file << "Image_Name,Image_Size,Feature_Count,Feature_MSE_Error\n";
+            csv_file << "Image_Name,Feature_MSE_Error\n";
           }
-          std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << csv_img_name << "," << size_str << "," << eo_pts.size() << ",    " << feature_mse << "\n";
+          csv_file << csv_img_name << ",    " << feature_mse << "\n";
           csv_file.close();
           
           std::cout << "    Feature Point MSE Error: " << feature_mse << " px^2" << std::endl;
@@ -783,10 +791,20 @@ int main(int argc, char **argv)
       
       // 每50幀計算一次特徵點
       if (cnt % compute_per_frame == 0) {
+        // ----- 為每個計算幀創建新的model實例 -----
+        std::string frame_identifier = "frame_" + std::to_string(cnt);
+        std::cout << "\n=== Creating fresh model instance for " << frame_identifier << " ===" << std::endl;
+        auto image_align = core::ImageAlign::create_instance(
+            core::ImageAlign::Param()
+                .set_size(pred_w, pred_h, out_w, out_h)
+                .set_net(device, model_path, pred_mode)
+                .set_distance(align_distance_line, align_distance_last, 20)
+                .set_angle(align_angle_mean, align_angle_sort)
+                .set_bias(0, 0));
+        std::cout << "Fresh model initialization completed for " << frame_identifier << std::endl;
+        
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
-        // 為影片幀使用幀數作為標識符
-        std::string frame_identifier = "frame_" + std::to_string(cnt);
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M, frame_identifier);
         cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
         timer_align.stop();
@@ -805,7 +823,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 800, 0.98);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 3000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {

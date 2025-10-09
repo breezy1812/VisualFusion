@@ -147,6 +147,9 @@ namespace core
 
     // warm up
     void warm_up();
+    
+    // smart warmup: 初始化 CUDA kernels 但不影響推理精度
+    void smart_warmup();
 
     // prediction
     void pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, const std::string& filename = "");

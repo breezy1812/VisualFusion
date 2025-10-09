@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -D_GLIBCXX_USE_CXX11_ABI=1
 
-CXX_INCLUDES = -I/opt/TensorRT-8.6.1.6/include -I/usr/local/cuda/include -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/nlohmann -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/utils/include -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/lib_image_fusion/include -I/circ330/onnxruntime-linux-x64-1.16.3/include -isystem /usr/include/opencv4
+CXX_INCLUDES = -I/opt/TensorRT-8.4.3.1/include -I/usr/local/cuda/include -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/nlohmann -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/utils/include -I/circ330/forgithub/VisualFusion_libtorch/tensorRT/lib_image_fusion/include -I/circ330/onnxruntime-linux-x64-1.16.3/include -isystem /usr/include/opencv4
 
 CXX_FLAGS = -std=gnu++17
 

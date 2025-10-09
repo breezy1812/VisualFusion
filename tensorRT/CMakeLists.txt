@@ -22,11 +22,11 @@ find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core imgcodecs highgui calib3d videoio dnn)
 
 # TensorRT (手動指定路徑)
-set(TENSORRT_INCLUDE_DIR /opt/TensorRT-8.6.1.6/include)
-set(TENSORRT_LIB /opt/TensorRT-8.6.1.6/lib/libnvinfer.so)
+set(TENSORRT_INCLUDE_DIR /opt/TensorRT-8.4.3.1/include)
+set(TENSORRT_LIB /opt/TensorRT-8.4.3.1/lib/libnvinfer.so)
 include_directories(${TENSORRT_INCLUDE_DIR})
 include_directories(/usr/local/cuda/include)
-link_directories(/opt/TensorRT-8.6.1.6/lib)
+link_directories(/opt/TensorRT-8.4.3.1/lib)
 link_directories(/usr/local/cuda/lib64)
 
 link_directories(${OpenCV_LIBS} /usr/local/lib)
@@ -55,6 +55,8 @@ target_link_libraries(out
     nvparsers
     nvonnxparser
     cudart
+    cublas
     ${CUDA_LIBRARIES}
+    stdc++fs
 )
 

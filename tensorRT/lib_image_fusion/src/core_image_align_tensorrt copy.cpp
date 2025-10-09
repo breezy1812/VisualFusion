@@ -98,8 +98,13 @@ public:
         
         std::cout << "debug: ImageAlignTensorRT initialized successfully with pred_mode=" << param_.pred_mode << std::endl;
         
-        // 執行 warmup
-        warm_up();
+        // 智能 warmup: 初始化 TensorRT 但不保留狀態
+        if (param_.device.compare("cuda") == 0) {
+            std::cout << "debug: Performing smart warmup for TensorRT CUDA execution..." << std::endl;
+            smart_warmup_tensorrt();
+        } else {
+            std::cout << "debug: TensorRT CPU model initialized without warmup to maintain first-inference precision" << std::endl;
+        }
     }
 
     // Destructor
@@ -134,6 +139,35 @@ public:
         const double period = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count();
 
         std::cout << "debug: TensorRT Warm up done in " << std::fixed << std::setprecision(2) << period << " s" << std::endl;
+    }
+    
+    // Smart warmup for TensorRT: 初始化 CUDA kernels 但不影響精度
+    void smart_warmup_tensorrt() {
+        std::cout<<"******************************"<<std::endl;
+        std::cout << "debug: TensorRT Smart warmup for CUDA kernel initialization..." << std::endl;
+        std::cout<<"******************************"<<std::endl;
+
+        cv::Mat eo = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 128;
+        cv::Mat ir = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 128;
+
+        const auto t0 = std::chrono::high_resolution_clock::now();
+        
+        // 只執行一次推理來初始化 TensorRT CUDA kernels
+        std::vector<cv::Point2i> dummy_eo_mkpts, dummy_ir_mkpts;
+        pred(eo, ir, dummy_eo_mkpts, dummy_ir_mkpts);
+        
+        // 重新創建 execution context 以清除內部狀態，保持第一次推理的精度
+        std::cout << "debug: Recreating TensorRT execution context to maintain first-inference precision..." << std::endl;
+        if (context_) context_->destroy();
+        context_ = engine_->createExecutionContext();
+        if (!context_) {
+            throw std::runtime_error("Failed to recreate TensorRT execution context");
+        }
+
+        const auto elapsed = std::chrono::high_resolution_clock::now() - t0;
+        const double period = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count();
+
+        std::cout << "debug: TensorRT Smart warmup completed in " << std::fixed << std::setprecision(2) << period << " s" << std::endl;
     }
 
     // 更新圖片名稱的方法
@@ -208,105 +242,60 @@ public:
         ir_gray.convertTo(ir_uint8, CV_8U);
         
         cv::Mat eo_float, ir_float;
-        if (param_.pred_mode == "fp16") {
-            // 2a. FP16模式：先正規化為FP32再轉FP16（對應Python的dtype轉換）
-            std::cout << "debug: Using FP16 mode for inference (Python-compatible)..." << std::endl;
-            cv::Mat eo_float32, ir_float32;
-            eo_uint8.convertTo(eo_float32, CV_32F, 1.0f / 255.0f);
-            ir_uint8.convertTo(ir_float32, CV_32F, 1.0f / 255.0f);
-            eo_float32.convertTo(eo_float, CV_16F);  // CV_16F 對應 half precision
-            ir_float32.convertTo(ir_float, CV_16F);
-        } else {
-            // 2b. FP32模式：直接正規化為FP32
-            std::cout << "debug: Using FP32 mode for inference (Python-compatible)..." << std::endl;
-            eo_uint8.convertTo(eo_float, CV_32F, 1.0f / 255.0f);
-            ir_uint8.convertTo(ir_float, CV_32F, 1.0f / 255.0f);
-        }
-
-        // HWC to CHW - 根據 pred_mode 決定資料格式
-        int valid_points_count = 0;  // 統一宣告在這裡，兩個分支都可以使用
+        // 修改：統一使用FP32格式輸入數據
+        // 轉換流程：PyTorch(FP32) → ONNX(FP32) → TensorRT(FP16)
+        // TensorRT引擎內部使用FP16，但輸入數據保持FP32格式
+        std::cout << "debug: Converting images to FP32 format (unified input)..." << std::endl;
+        eo_uint8.convertTo(eo_float, CV_32F, 1.0f / 255.0f);
+        ir_uint8.convertTo(ir_float, CV_32F, 1.0f / 255.0f);
         
         if (param_.pred_mode == "fp16") {
-            // FP16 模式：使用 half precision data
-            std::vector<__half> eo_data_fp16(param_.pred_width * param_.pred_height);
-            std::vector<__half> ir_data_fp16(param_.pred_width * param_.pred_height);
-            
-            // 將 CV_16F 轉換為 __half
-            const __half* eo_ptr = reinterpret_cast<const __half*>(eo_float.data);
-            const __half* ir_ptr = reinterpret_cast<const __half*>(ir_float.data);
-            
-            memcpy(eo_data_fp16.data(), eo_ptr, eo_data_fp16.size() * sizeof(__half));
-            memcpy(ir_data_fp16.data(), ir_ptr, ir_data_fp16.size() * sizeof(__half));
-            
-            std::cout << "debug: Pre-processing complete (FP16). Image size: " << param_.pred_width << "x" << param_.pred_height << std::endl;
-
-            // 2. Run Inference with FP16 data
-            auto inference_start = std::chrono::high_resolution_clock::now();
-            bool success = runInferenceFP16(eo_data_fp16, ir_data_fp16, eo_mkpts, ir_mkpts, valid_points_count);
-            auto inference_end = std::chrono::high_resolution_clock::now();
-            auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
-            double inference_time_seconds = inference_duration.count() / 1000000.0;
-            
-            std::cout << "debug: [pred] FP16 inference completed. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << ", valid_points_count: " << valid_points_count << std::endl;
-            std::cout << "Inference time: " << inference_time_seconds << " seconds" << std::endl;
-            
-            // 記錄到 CSV
-            if (csv_file_.is_open()) {
-                std::string image_name = current_image_name_.empty() ? "----": current_image_name_;
-                if(image_name=="----"){
-                    return;
-                }
-                csv_file_ << image_name << "," << std::fixed << std::setprecision(6) << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
-                csv_file_.flush();
-            }
-
-            if (!success) {
-                std::cerr << "debug: ERROR: FP16 Inference failed." << std::endl;
-                eo_mkpts.clear();
-                ir_mkpts.clear();
-                return;
-            }
+            std::cout << "debug: Using FP16 TensorRT engine with FP32 input data..." << std::endl;
         } else {
-            // FP32 模式
-            std::vector<float> eo_data(param_.pred_width * param_.pred_height);
-            std::vector<float> ir_data(param_.pred_width * param_.pred_height);
-            
-            // Assuming the model wants [1, C, H, W] where C=1
-            memcpy(eo_data.data(), eo_float.data, eo_data.size() * sizeof(float));
-            memcpy(ir_data.data(), ir_float.data, ir_data.size() * sizeof(float));
-            
-            std::cout << "debug: Pre-processing complete (FP32). Image size: " << param_.pred_width << "x" << param_.pred_height << std::endl;
+            std::cout << "debug: Using FP32 TensorRT engine with FP32 input data..." << std::endl;
+        }
 
-            // 2. Run Inference
-            std::cout << "debug: [pred] Before runInference. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << std::endl;
-            
-            // 開始計時
-            auto inference_start = std::chrono::high_resolution_clock::now();
-            bool success = runInference(eo_data, ir_data, eo_mkpts, ir_mkpts, valid_points_count);
-            // 結束計時
-            auto inference_end = std::chrono::high_resolution_clock::now();
-            auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
-            double inference_time_seconds = inference_duration.count() / 1000000.0;
-            
-            std::cout << "debug: [pred] After runInference. eo_mkpts size: " << eo_mkpts.size() << ", ir_mkpts size: " << ir_mkpts.size() << ", valid_points_count: " << valid_points_count << std::endl;
-            std::cout << "Inference time: " << inference_time_seconds << " seconds" << std::endl;
-            
-            // 記錄到 CSV
-            if (csv_file_.is_open()) {
-                std::string image_name = current_image_name_.empty() ? "----" : current_image_name_;
-                if(image_name=="----"){
-                    return;
-                }
-                csv_file_ << image_name << "," << std::fixed << std::setprecision(6) << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
+        // 統一處理：無論TensorRT引擎是FP16還是FP32，都使用FP32輸入數據
+        int valid_points_count = 0;
+        std::vector<float> eo_data(param_.pred_width * param_.pred_height);
+        std::vector<float> ir_data(param_.pred_width * param_.pred_height);
+        
+        // 將FP32圖像數據拷貝到向量中
+        memcpy(eo_data.data(), eo_float.data, eo_data.size() * sizeof(float));
+        memcpy(ir_data.data(), ir_float.data, ir_data.size() * sizeof(float));
+        
+        std::cout << "debug: Pre-processing complete. Using FP32 input data. Image size: " 
+                  << param_.pred_width << "x" << param_.pred_height << std::endl;
+
+        // 執行推理 - 統一使用FP32數據接口
+        std::cout << "debug: [pred] Before runInference. eo_mkpts size: " << eo_mkpts.size() 
+                  << ", ir_mkpts size: " << ir_mkpts.size() << std::endl;
+        
+        auto inference_start = std::chrono::high_resolution_clock::now();
+        bool success = runInference(eo_data, ir_data, eo_mkpts, ir_mkpts, valid_points_count);
+        auto inference_end = std::chrono::high_resolution_clock::now();
+        auto inference_duration = std::chrono::duration_cast<std::chrono::microseconds>(inference_end - inference_start);
+        double inference_time_seconds = inference_duration.count() / 1000000.0;
+        
+        std::cout << "debug: [pred] After runInference. eo_mkpts size: " << eo_mkpts.size() 
+                  << ", ir_mkpts size: " << ir_mkpts.size() << ", valid_points_count: " << valid_points_count << std::endl;
+        std::cout << "Inference time: " << inference_time_seconds << " seconds" << std::endl;
+        
+        // 記錄到CSV
+        if (csv_file_.is_open()) {
+            std::string image_name = current_image_name_.empty() ? "----" : current_image_name_;
+            if(image_name != "----") {
+                csv_file_ << image_name << "," << std::fixed << std::setprecision(6) 
+                         << inference_time_seconds << "," << eo_mkpts.size() << std::endl;
                 csv_file_.flush();
             }
+        }
 
-            if (!success) {
-                std::cerr << "debug: ERROR: Inference failed." << std::endl;
-                eo_mkpts.clear();
-                ir_mkpts.clear();
-                return;
-            }
+        if (!success) {
+            std::cerr << "debug: ERROR: Inference failed." << std::endl;
+            eo_mkpts.clear();
+            ir_mkpts.clear();
+            return;
         }
         
         std::cout << "debug: Inference successful. Total valid points processed." << std::endl;

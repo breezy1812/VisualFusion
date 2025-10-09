@@ -92,7 +92,6 @@ inline void init_config(nlohmann::json &config)
 
   config.emplace("skip_frames", nlohmann::json::object());
 
-  config.emplace("fusion_interpolation", "linear"); // 新增：插值方式 linear/cubic
 }
 
 cv::Mat cropImage(const cv::Mat& sourcePic, int x, int y, int w, int h) {
@@ -283,25 +282,42 @@ cv::Mat readGTHomography(const std::string& gt_path, const std::string& img_name
   }
 }
 
-// 計算 homography 誤差函數
-double calcHomographyEuclideanError(const cv::Mat& H1, const cv::Mat& H2, int w, int h) {
-    if (H1.empty() || H2.empty()) return -1.0;
-    std::vector<cv::Point2f> corners = {
-        cv::Point2f(0, 0),
-        cv::Point2f(w, 0),
-        cv::Point2f(0, h),
-        cv::Point2f(w, h)
-    };
-    std::vector<cv::Point2f> pts1, pts2;
-    cv::perspectiveTransform(corners, pts1, H1);
-    cv::perspectiveTransform(corners, pts2, H2);
-    double err = 0.0;
-    for (int i = 0; i < 4; ++i) {
-        double dx = pts1[i].x - pts2[i].x;
-        double dy = pts1[i].y - pts2[i].y;
-        err += std::sqrt(dx * dx + dy * dy);
+
+// 計算特徵點MSE誤差函數 (與 LibTorch 版本一致)
+double calcFeaturePointMSE(const cv::Mat& homo_pred, const cv::Mat& homo_gt, 
+                          const std::vector<cv::Point2i>& eo_pts) {
+    if (homo_pred.empty() || homo_gt.empty() || eo_pts.empty()) return -1.0;
+    
+    // 將EO特徵點轉換為float格式
+    std::vector<cv::Point2f> eo_pts_f;
+    for (const auto& pt : eo_pts) {
+        eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
     }
-    return err / 4.0;
+    
+    // 1. eo的點 * eo_homo_pred(矩陣) = kpts_pred(轉換後的點)
+    std::vector<cv::Point2f> kpts_pred;
+    cv::perspectiveTransform(eo_pts_f, kpts_pred, homo_pred);
+    
+    // 2. eo的點 * homo_gt(自己建立的gt) = kpts_gt
+    std::vector<cv::Point2f> kpts_gt;
+    cv::perspectiveTransform(eo_pts_f, kpts_gt, homo_gt);
+    
+    // 3. kpts_pred & kpts_gt計算所有特徵點計算距離差(MSE)
+    double total_squared_error = 0.0;
+    int valid_points = 0;
+    
+    for (size_t i = 0; i < kpts_pred.size() && i < kpts_gt.size(); ++i) {
+        double dx = kpts_pred[i].x - kpts_gt[i].x;
+        double dy = kpts_pred[i].y - kpts_gt[i].y;
+        double squared_distance = dx * dx + dy * dy;
+        total_squared_error += squared_distance;
+        valid_points++;
+    }
+    
+    if (valid_points == 0) return -1.0;
+    
+    // 返回MSE (Mean Squared Error)
+    return total_squared_error / valid_points;
 }
 
 int main(int argc, char **argv)
@@ -385,9 +401,8 @@ int main(int argc, char **argv)
   int fusion_threshold_equalization_low = config["fusion_threshold_equalization_low"];
   int fusion_threshold_equalization_high = config["fusion_threshold_equalization_high"];
   int fusion_threshold_equalization_zero = config["fusion_threshold_equalization_zero"];
-  // 新增：插值方式
-  std::string fusion_interpolation = config.value("fusion_interpolation", "linear");
-  bool isUsingCubic = (fusion_interpolation == "cubic");
+  // 新增：插值方式 
+  
 
   // get perspective parameter
   bool perspective_check = config["perspective_check"];
@@ -547,7 +562,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-      // int interp = isUsingCubic ? cv::INTER_CUBIC : cv::INTER_LINEAR;
+      
       // 直接強制使用 linear
       int interp = cv::INTER_LINEAR;
 
@@ -597,6 +612,8 @@ int main(int argc, char **argv)
         cv::Mat M_single;
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
         
+        std::cout << "    [DEBUG] After align: eo_pts size = " << eo_pts.size() << std::endl;
+        
         // ========== RANSAC 濾除 outlier，提升精度 ==========
         cv::Mat refined_H = M_single.clone();
         if (eo_pts.size() >= 4 && ir_pts.size() >= 4) {
@@ -604,7 +621,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 1000, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 3000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
@@ -619,11 +636,14 @@ int main(int argc, char **argv)
               }
               eo_pts = filtered_eo_pts;
               ir_pts = filtered_ir_pts;
+              std::cout << "    [DEBUG] After RANSAC filtering: eo_pts size = " << eo_pts.size() << std::endl;
             }
           }
         }
         // 使用 refined homography
         M = refined_H.empty() ? cv::Mat::eye(3, 3, CV_64F) : refined_H.clone();
+        
+        std::cout << "    [DEBUG] Before MSE calculation: eo_pts size = " << eo_pts.size() << std::endl;
         
         // ========== 圖片模式下組合顯示 ==========
         // 準備 temp_pair：左邊IR，右邊EO經過homo變換
@@ -679,16 +699,13 @@ int main(int argc, char **argv)
         // 讀取 GT homography
         cv::Mat gt_homo = readGTHomography(gt_homo_base_path, img_name_csv);
         
-        if (!gt_homo.empty()) {
-          // 使用當前config指定的插值方法和已計算的homography
-          std::string current_interp_name = isUsingCubic ? "cubic" : "linear";
-          std::cout << "  Using " << current_interp_name << " interpolation (from config)..." << std::endl;
-          
+        if (!gt_homo.empty() && !eo_pts.empty()) {
           // 直接使用已經計算出的 homography M
           cv::Mat final_M = M.empty() ? cv::Mat::eye(3, 3, CV_64F) : M;
           
-          // 計算與 GT 的誤差
-          double euclidean_error = calcHomographyEuclideanError(final_M, gt_homo, out_w, out_h);
+          // 使用新的特徵點MSE誤差計算方法（與 LibTorch 版本一致）
+          // 使用 RANSAC 過濾後的 inlier 特徵點
+          double feature_mse = calcFeaturePointMSE(final_M, gt_homo, eo_pts);
           
           // 寫入 CSV
           std::string csv_filename = "image_homo_errors.csv";
@@ -697,18 +714,21 @@ int main(int argc, char **argv)
           csv_file.open(csv_filename, std::ios::app);
           
           if (!file_exists) {
-            csv_file << "Image_Name,Image_Size,Is_Cubic,Euclidean_Error\n";
+            csv_file << "Image_Name,Feature_MSE_Error\n";
           }
-          
-          std::string is_cubic = isUsingCubic ? "Yes" : "No";
-          std::string size_str = std::to_string(out_w) + "*" + std::to_string(out_h);
-          csv_file << img_name_csv << "," << size_str << "," << is_cubic << "," << euclidean_error << "\n";
+          csv_file << img_name_csv << ",    " << feature_mse << "\n";
           csv_file.close();
           
-          std::cout << "    " << current_interp_name << " interpolation error: " << euclidean_error << " px" << std::endl;
+          std::cout << "    Feature Point MSE Error: " << feature_mse << " px^2" << std::endl;
+          std::cout << "    Feature Points Used: " << eo_pts.size() << std::endl;
           std::cout << "CSV result saved to image_homo_errors.csv" << std::endl;
         } else {
-          std::cout << "GT homography not found for image: " << img_name_csv << std::endl;
+          if (gt_homo.empty()) {
+            std::cout << "GT homography not found for image: " << img_name_csv << std::endl;
+          }
+          if (eo_pts.empty()) {
+            std::cout << "No feature points available for MSE calculation" << std::endl;
+          }
         }
         
         // int key = waitKey(0); // 註解掉以避免GUI錯誤

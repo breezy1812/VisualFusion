@@ -77,11 +77,11 @@ inline void init_config(nlohmann::json &config)
   config.emplace("Vcut_h", -1); // -1 means no cut, use full image height
   config.emplace("Vcut_w", -1); // -1 means no cut, use full image width
 
-  config.emplace("output_width", 480);
-  config.emplace("output_height", 360);
+  config.emplace("output_width", 512);
+  config.emplace("output_height", 384);
 
-  config.emplace("pred_width", 320);//480,360
-  config.emplace("pred_height", 240);// 640 480
+  config.emplace("pred_width", 512);//480,360
+  config.emplace("pred_height", 384);// 640 480
 
   config.emplace("fusion_shadow", true);
   config.emplace("fusion_edge_border", 2);  // 增加邊緣寬度從1到2
@@ -503,7 +503,7 @@ int main(int argc, char **argv)
 
   // ----- Start Processing All Files -----
   // ===== 臨時測試功能：運行1輪所有圖片來測試一致性（之後可以刪除） =====
-  const int test_rounds = 300; // 測試輪數（之後可以刪除這個變數）
+  const int test_rounds = 100; // 測試輪數（之後可以刪除這個變數）
   
 
 
@@ -629,42 +629,55 @@ int main(int argc, char **argv)
         eo = cv::imread(eo_path);
         ir = cv::imread(ir_path);
         
-        // 提取圖片名稱用於CSV記錄
-        std::string img_name = eo_path.substr(eo_path.find_last_of("/\\") + 1);
-        size_t dot_pos = img_name.find_last_of(".");
-        if (dot_pos != std::string::npos) {
-          img_name = img_name.substr(0, dot_pos);
-        }
-        size_t eo_pos = img_name.find("_EO");
-        if (eo_pos != std::string::npos) {
-          img_name = img_name.substr(0, eo_pos);
-        }
-        // 設置當前圖片名稱到模型中
-        image_align->set_current_image_name(img_name);
         
         // 圖片裁剪
         // 1. 讀取eo,ir (已完成)
-        // 2. eo裁切並resize320240,ir resize320240
+        // 2. eo裁切並resiz
         if (isPictureCut) {
           eo = cropImage(eo, Pcut_x, Pcut_y, Pcut_w, Pcut_h);
         }
-        // resize到320x240
+
+        // 提取圖片名稱用於識別
+        string file = eo_path.substr(eo_path.find_last_of("/\\") + 1);
+        string img_name = file.substr(0, file.find_last_of("."));
+        // 如果檔名包含_EO，去除它
+        if (img_name.find("_EO") != string::npos) {
+          img_name = img_name.substr(0, img_name.find("_EO"));
+        }
+
+        // 設置當前圖片名稱到模型中
+        image_align->set_current_image_name(img_name);
+
+
+        // resize到
         cv::Mat eo_final, ir_final;
-        // cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
-        // cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_CUBIC);
-        cv::resize(eo, eo_final, cv::Size(320, 240), 0, 0, cv::INTER_AREA);
-        cv::resize(ir, ir_final, cv::Size(320, 240), 0, 0, cv::INTER_AREA);
-        
-        
+        cv::resize(eo, eo_final, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+        cv::resize(ir, ir_final, cv::Size(out_w, out_h), 0, 0, cv::INTER_AREA);
+
+
         // 3. 兩張圖片經過gray並擴增到3channel
         cv::Mat gray_eo, gray_ir;
         cv::cvtColor(eo_final, gray_eo, cv::COLOR_BGR2GRAY);
         cv::cvtColor(ir_final, gray_ir, cv::COLOR_BGR2GRAY);
         
-        // 擴增到3通道 (雖然模型只用單通道，但為了流程一致性)
-        // cv::Mat gray_eo, gray_ir;
-        // cv::cvtColor(gray_eo, gray_eo, cv::COLOR_GRAY2BGR);
-        // cv::cvtColor(gray_ir, gray_ir, cv::COLOR_GRAY2BGR);
+        // // ===== 新增：寫入第一張圖片的原始灰階數據到 CSV =====
+        // if (cnt == 0) {  // 只針對第一張圖片
+        //     std::string gray_csv_filename = "/circ330/forgithub/VisualFusion_libtorch/Onnx/output/input_data_" + img_name + ".csv";
+        //     std::ofstream gray_csv(gray_csv_filename);
+        //     gray_csv << std::fixed << std::setprecision(20);
+            
+        //     if (gray_csv.is_open()) {
+        //         for (int i = 0; i < gray_eo.rows; ++i) {
+        //             for (int j = 0; j < gray_eo.cols; ++j) {
+        //                 gray_csv << static_cast<int>(gray_eo.at<uint8_t>(i, j)) << "," 
+        //                         << static_cast<int>(gray_ir.at<uint8_t>(i, j)) << "\n";
+        //             }
+        //         }
+        //         gray_csv.close();
+        //         std::cout << "eeeeeeeeeeeeeeeeeeeeeeooooooooooooooooooooooooo" << gray_csv_filename << std::endl;
+        //     }
+        // }
+        // ===== 結束新增部分 =====
         
         // 4. 兩張圖片給model做預測
         // 5. model預測出kps1,kps2,leng1,leng2
@@ -672,7 +685,7 @@ int main(int argc, char **argv)
         cv::Mat M_single;
         
         image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single);
-        
+        // return;
         // 6. kps1和kps2經過ransac(8.0 ,800,0.98)之後得到縮減後的kps1,kps2
         // 7. kps1和kps2經過homo轉換得到一個H
         cv::Mat refined_H = M_single.clone();
@@ -681,7 +694,7 @@ int main(int argc, char **argv)
           for (const auto& pt : eo_pts) eo_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           for (const auto& pt : ir_pts) ir_pts_f.push_back(cv::Point2f(pt.x, pt.y));
           cv::Mat mask;
-          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 8.0, mask, 1000, 0.99);
+          cv::Mat H = cv::findHomography(eo_pts_f, ir_pts_f, cv::RANSAC, 6.0, mask, 3000, 0.99);
           if (!H.empty() && !mask.empty()) {
             int inliers = cv::countNonZero(mask);
             if (inliers >= 4 && cv::determinant(H) > 1e-6 && cv::determinant(H) < 1e6) {
@@ -784,11 +797,11 @@ int main(int argc, char **argv)
           csv_file.open(csv_filename, std::ios::app);
           
           if (!file_exists) {
-            csv_file << "Image_Name,Image_Size,Feature_Points,MSE_Error\n";
+            csv_file << "Image_Name,MSE_Error\n";
           }
-          
-          std::string size_str = "320*240";  // 使用模型預測尺寸
-          csv_file << img_name << "," << size_str << "," << eo_pts.size() << "," << feature_mse_error << "\n";
+
+          std::string size_str = "512*384";  // 使用模型預測尺寸
+          csv_file << img_name << ",   " << feature_mse_error << "\n";
           csv_file.close();
           
           std::cout << "    Feature Point MSE Error: " << feature_mse_error << " px^2" << std::endl;

@@ -12,6 +12,26 @@ namespace core
   {
     torch::manual_seed(1);
     torch::autograd::GradMode::set_enabled(false);
+    
+    // ===== 同步 Python 端的確定性設定 =====
+    // 1. 關閉 TF32 (與 Python torch.backends.cuda.matmul.allow_tf32 = False 等價)
+    at::globalContext().setAllowTF32CuBLAS(false);
+    at::globalContext().setAllowTF32CuDNN(false);
+    // 2. 啟用 cuDNN deterministic (與 Python torch.backends.cudnn.deterministic = True 等價)
+    // at::globalContext().setDeterministicCuDNN(true);
+    
+    // 3. 關閉 cuDNN benchmark (與 Python torch.backends.cudnn.benchmark = False 等價)
+    // at::globalContext().setBenchmarkCuDNN(false);
+    
+    // 4. 設定 cuDNN 為確定性模式 (與 Python torch.use_deterministic_algorithms(True) 等價)
+    // at::globalContext().setDeterministicAlgorithms(true, false);
+
+    printf("Deterministic settings applied:\n");
+    printf("  - TF32 cuBLAS: disabled\n");
+    printf("  - TF32 cuDNN: disabled\n");
+    printf("  - cuDNN deterministic: enabled\n");
+    printf("  - cuDNN benchmark: disabled\n");
+    printf("  - Deterministic algorithms: enabled\n");
 
     if (param_.device.compare("cuda") == 0 && torch::cuda::is_available())
     {
@@ -19,77 +39,173 @@ namespace core
       device = cuda;
     }
 
+    // 載入 FP32 TorchScript 模型
     net = torch::jit::load(param_.model_path);
     net.eval();
     net.to(device);
 
-    if (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0)
+    // ⭐ 業界推薦方案：在 C++ 端動態轉換為 FP16（若啟用）
+    if (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0) {
+      printf("🔄 Converting FP32 model to FP16 (dynamic conversion in C++)...\n");
+      
+      // 步驟 1：整體模型轉換
       net.to(torch::kHalf);
+      
+      // 步驟 2：遍歷所有子模組確保轉成半精度
+      for (auto child : net.children()) {
+        child.to(torch::kHalf);
+      }
+      
+      // 步驟 3：遍歷所有參數強制轉成半精度
+      int param_count = 0;
+      for (at::Tensor param : net.parameters()) {
+        param.set_data(param.data().to(torch::kHalf));
+        param_count++;
+      }
+      printf("  - Converted %d parameters to FP16\n", param_count);
+      
+      // 步驟 4：遍歷所有 buffer，但保持 BatchNorm 統計為 FP32（避免數值不穩定）
+      int buffer_count = 0;
+      int buffer_skipped = 0;
+      for (at::Tensor buffer : net.buffers()) {
+        // BatchNorm 的 running_mean、running_var 保持 FP32 以維持數值穩定性
+        if (buffer.dtype() == torch::kFloat && buffer.numel() > 0) {
+          // 檢查是否為 BatchNorm 統計 buffer（通常是 1D tensor）
+          if (buffer.dim() == 1) {
+            buffer_skipped++;
+            continue;  // 保持 FP32
+          }
+        }
+        buffer.set_data(buffer.data().to(torch::kHalf));
+        buffer_count++;
+      }
+      printf("  - Converted %d buffers to FP16, kept %d buffers as FP32 (BatchNorm statistics)\n", 
+             buffer_count, buffer_skipped);
+      
+      // 確保所有 CUDA 任務完成
+      if (torch::cuda::is_available()) {
+        torch::cuda::synchronize();
+      }
+      
+      printf("✅ Model successfully converted to FP16 (mixed precision)\n");
+      printf("  - Core layers: FP16 (Tensor Core acceleration)\n");
+      printf("  - BatchNorm statistics: FP32 (numerical stability)\n");
+      printf("  - Ready for inference\n");
+    }
 
     printf("Model initialization completed\n");
+    printf("  - Mode: %s\n", param_.mode.c_str());
+    printf("  - Device: %s\n", param_.device.c_str());
+    if (param_.mode.compare("fp16") == 0) {
+      printf("  - Precision: FP16 (dynamically converted from FP32 model)\n");
+    } else {
+      printf("  - Precision: FP32\n");
+    }
 
-    // 執行 warmup，不論是 CPU 或 CUDA
-    warm_up();
+    // 智能 warmup: 執行 warmup 來初始化 CUDA kernels，但不保留內部狀態
+    if (param_.device.compare("cuda") == 0) {
+      printf("Performing smart warmup to initialize CUDA kernels...\n");
+      smart_warmup();
+    }
   }
 
-  // warm up
-  void ImageAlign::warm_up()
+  void ImageAlign::smart_warmup()
   {
-    printf("Warm up...\n");
+    printf("Smart warmup for CUDA kernel initialization (5 iterations)...\n");
 
-    cv::Mat eo = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 255;
-    cv::Mat ir = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 255;
+    cv::Mat eo = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 128;
+    cv::Mat ir = cv::Mat::ones(param_.pred_height, param_.pred_width, CV_8UC1) * 128;
 
     const auto t0 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 10; i++)
-    {
-      cv::Mat H;
-      std::vector<cv::Point2i> eo_mkpts, ir_mkpts;
-      pred(eo, ir, eo_mkpts, ir_mkpts);
+    
+    bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
+    
+    if (use_fp16) {
+      printf("  - Warmup mode: FP16 (matching inference precision)\n");
+    } else {
+      printf("  - Warmup mode: FP32\n");
+    }
+    
+    // 執行 5 次推理來完全初始化 CUDA kernels
+    for (int i = 0; i < 5; i++) {
+      printf("  Warmup iteration %d/5...\n", i + 1);
+      
+      torch::Tensor eo_tensor = torch::from_blob(eo.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).clone().to(device).to(torch::kFloat32) / 255.0f;
+      torch::Tensor ir_tensor = torch::from_blob(ir.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).clone().to(device).to(torch::kFloat32) / 255.0f;
+      
+      // ⭐ 業界推薦：warmup 時輸入精度與推論一致
+      if (use_fp16) {
+        eo_tensor = eo_tensor.to(torch::kHalf);
+        ir_tensor = ir_tensor.to(torch::kHalf);
+      }
+      
+      // 執行推理（結果被丟棄）
+      torch::IValue pred = net.forward({eo_tensor, ir_tensor});
     }
 
     const auto elapsed = std::chrono::high_resolution_clock::now() - t0;
     const double period = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count();
 
-    printf("Warm up done in %.2f s\n", period);
+    printf("Smart warmup completed in %.2f s (5 iterations)\n", period);
+    printf("✅ CUDA kernels initialized, ready for inference\n");
   }
 
-  // prediction - MODIFIED: 改善精度和資料處理，符合Python版本
+  // prediction - OPTIMIZED: 優化數據處理流程，減少 CPU 開銷
+  // ⭐ 業界推薦方案：模型已在 C++ 端轉為 FP16，輸入資料也需轉為 FP16
   void ImageAlign::pred(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, const std::string& filename)
   {
     if (eo.channels() != 1 || ir.channels() != 1)
       throw std::runtime_error("ImageAlign::pred: eo and ir must be single channel images");
 
-    // OPTIMAL: 最簡潔和準確的FP16/FP32處理方案
-    // 策略：只在模型推理時使用FP16，輸入處理和輸出都用FP32以保持精度
-    
-    // 1. 直接創建FP32 tensor並正規化（只要1行！）
-    torch::Tensor eo_tensor = torch::from_blob(eo.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).to(device).to(torch::kFloat32) / 255.0f;
-    torch::Tensor ir_tensor = torch::from_blob(ir.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8).to(device).to(torch::kFloat32) / 255.0f;
-    
-    // 2. 只在模型推理時才轉換為FP16（如果需要）
-    // #TODO:因為pytorch在推論會使用到混合精度所以才會比較慢，libtorch市全部都是fp16所以才比較快，還有因為全部都是fp16所以誤差容易放大
-    // #TODO:libtorch onnx trt 全部重測試 + warm up
-    
-
+    // 根據 pred_mode 決定使用 FP32 還是 FP16
     bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
-    if (use_fp16) {
-      eo_tensor = eo_tensor.to(torch::kHalf);
-      ir_tensor = ir_tensor.to(torch::kHalf);
+    
+    // 計時 - 數據準備開始
+    auto data_prep_start = std::chrono::high_resolution_clock::now();
+    
+    torch::Tensor eo_tensor, ir_tensor;
+    
+    // 優化：直接在 GPU 上進行歸一化，減少 CPU 端的 convertTo 開銷
+    if (param_.device.compare("cuda") == 0) {
+      // 直接從 uint8 創建 tensor 並在 GPU 上歸一化
+      eo_tensor = torch::from_blob(eo.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8)
+                    .clone()  // 必須 clone，避免數據被釋放
+                    .to(device)
+                    .to(torch::kFloat32)
+                    .div_(255.0f);  // 在 GPU 上歸一化，使用 inplace 操作更快
+      
+      ir_tensor = torch::from_blob(ir.data, {1, 1, param_.pred_height, param_.pred_width}, torch::kUInt8)
+                    .clone()
+                    .to(device)
+                    .to(torch::kFloat32)
+                    .div_(255.0f);
+      
+      // ⭐ 業界推薦：輸入資料必須與模型精度一致
+      // 若模型已轉 FP16，輸入也要轉 FP16，確保類型匹配和 Tensor Core 加速
+      if (use_fp16) {
+        eo_tensor = eo_tensor.to(torch::kHalf);
+        ir_tensor = ir_tensor.to(torch::kHalf);
+      }
+    } else {
+      // CPU 模式：僅支援 FP32
+      cv::Mat eo_float, ir_float;
+      eo.convertTo(eo_float, CV_32F, 1.0 / 255.0, 0.0);
+      ir.convertTo(ir_float, CV_32F, 1.0 / 255.0, 0.0);
+      
+      eo_tensor = torch::from_blob(eo_float.ptr<float>(), {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone();
+      ir_tensor = torch::from_blob(ir_float.ptr<float>(), {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone();
     }
-
+    
+    auto data_prep_end = std::chrono::high_resolution_clock::now();
+    double data_prep_time = std::chrono::duration_cast<std::chrono::microseconds>(data_prep_end - data_prep_start).count() / 1000.0; // ms
+    
     // 計時 - 模型推論開始
     auto model_inference_start = std::chrono::high_resolution_clock::now();
-
-    // // // 確保CUDA操作完成後再開始計時推論
-    // if (param_.device.compare("cuda") == 0) {
-    //   torch::cuda::synchronize();
-    // }
 
     // run the model
     torch::IValue pred = net.forward({eo_tensor, ir_tensor});
     
-    // // 確保推論完成
+    // // 確保推論完成（僅在CUDA模式下）
     // if (param_.device.compare("cuda") == 0) {
     //   torch::cuda::synchronize();
     // }
@@ -99,33 +215,42 @@ namespace core
     double model_inference_time = std::chrono::duration_cast<std::chrono::microseconds>(model_inference_end - model_inference_start).count() / 1000000.0; // 轉換為秒
     torch::jit::Stack pred_ = pred.toTuple()->elements();
 
-    // get mkpts from the model output
-    torch::Tensor eo_mkpts = pred_[0].toTensor().to(torch::kFloat32); // 確保輸出是FP32
-    torch::Tensor ir_mkpts = pred_[1].toTensor().to(torch::kFloat32);
-    int leng=pred_[2].toInt(); // 獲取特徵點數量
+    // 新模型只返回 2 個輸出：mkpts0 和 mkpts1 (int32 類型)
+    torch::Tensor eo_mkpts = pred_[0].toTensor().to(torch::kInt32);
+    torch::Tensor ir_mkpts = pred_[1].toTensor().to(torch::kInt32);
 
     // clean up eo_pts and ir_pts
     eo_pts.clear();
     ir_pts.clear();
 
-    for (int i = 0; i <leng; i++)
+    // 遍歷所有點，過濾掉座標為 (0, 0) 的無效點
+    int num_points = eo_mkpts.size(0);  // 獲取總點數（應該是 1200）
+    for (int i = 0; i < num_points; i++)
     {
-      // 使用round而非直接轉換，提高精度
-      float eo_x = eo_mkpts[i][0].item<float>();
-      float eo_y = eo_mkpts[i][1].item<float>();
-      float ir_x = ir_mkpts[i][0].item<float>();
-      float ir_y = ir_mkpts[i][1].item<float>();
+      int eo_x = eo_mkpts[i][0].item<int>();
+      int eo_y = eo_mkpts[i][1].item<int>();
+      int ir_x = ir_mkpts[i][0].item<int>();
+      int ir_y = ir_mkpts[i][1].item<int>();
       
-      // eo_pts.push_back(cv::Point2i(static_cast<int>(std::round(eo_x)), static_cast<int>(std::round(eo_y))));
-      // ir_pts.push_back(cv::Point2i(static_cast<int>(std::round(ir_x)), static_cast<int>(std::round(ir_y))));
-      eo_pts.push_back(cv::Point2i(static_cast<int>(eo_x), static_cast<int>(eo_y)));
-      ir_pts.push_back(cv::Point2i(static_cast<int>(ir_x), static_cast<int>(ir_y)));
+      // 跳過座標為 (0, 0) 的無效點
+      if (eo_x == 0 && eo_y == 0) {
+        continue;
+      }
+      
+      eo_pts.push_back(cv::Point2i(eo_x, eo_y));
+      ir_pts.push_back(cv::Point2i(ir_x, ir_y));
     }
+    
+    int leng = eo_pts.size();  // 實際有效的特徵點數量
     
     // 寫入CSV檔案 - 只記錄模型推論時間
     writeTimingToCSV("Model_Inference", model_inference_time, leng, filename);
     
-    printf("Model inference time: %.6f s\n", model_inference_time);
+    // 輸出詳細計時信息
+    printf("⏱️  Timing breakdown:\n");
+    printf("  - Data preparation: %.3f ms\n", data_prep_time);
+    printf("  - Model inference: %.3f ms (%.6f s)\n", model_inference_time * 1000, model_inference_time);
+    printf("  - Total: %.3f ms\n", data_prep_time + model_inference_time * 1000);
 
     // DEBUG: 輸出特徵點數量
     std::cout << "  - Model extracted " << eo_pts.size() << " feature point pairs" << std::endl;

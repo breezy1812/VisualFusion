@@ -2,9 +2,53 @@ import pywt
 import torch
 import matplotlib
 import matplotlib.pyplot as plt
-
 from torch import nn
 from einops.einops import _prepare_transformation_recipe, _apply_recipe
+import os
+import random
+import numpy as np
+
+# ============================================================================
+# 🔒 完整的確定性設置（確保 RTX 30 系列與 GTX 1080 Ti 一致）
+# 直接在模塊導入時執行，無需函數包裝，避免 JIT 轉換問題
+# ============================================================================
+
+# 1. Python 隨機種子
+random.seed(42)
+
+# 2. NumPy 隨機種子
+np.random.seed(42)
+
+# 3. PyTorch CPU 隨機種子
+torch.manual_seed(42)
+
+# 4. PyTorch GPU 隨機種子
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
+# 5. 強制使用確定性算法
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+# ============================================================================
+# 🔥 關鍵：禁用 TF32（RTX 30 系列的關鍵設置）
+# ============================================================================
+# TF32 在 Ampere 架構（RTX 3070/3080/3090）上默認啟用
+# 會導致 BatchNorm2d 計算結果與 Pascal 架構（GTX 1080 Ti）不一致
+
+# 禁用 CUDA matmul 的 TF32
+if hasattr(torch.backends.cuda, 'matmul'):
+    torch.backends.cuda.matmul.allow_tf32 = False
+
+# 禁用 cuDNN 的 TF32
+if hasattr(torch.backends.cudnn, 'allow_tf32'):
+    torch.backends.cudnn.allow_tf32 = False
+
+# 6. 設置環境變量（禁用所有異步和並行優化）
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # 同步執行，禁用異步優化
+os.environ['PYTHONHASHSEED'] = '42'
 
 
 def conv1x1(in_channels, out_channels, stride=1):
@@ -31,11 +75,15 @@ class CBR(nn.Module):
     def __init__(self, in_channels, planes, stride=1):
         super().__init__()
         self.conv = conv3x3(in_channels, planes, stride)
-        self.bn = nn.BatchNorm2d(planes)
+        self.bn = nn.BatchNorm2d(planes)  # 使用修正版自定義 BatchNorm2d
         self.relu = nn.ReLU(inplace=True)
-
+        
     def forward(self, x):
-        return self.relu(self.bn(self.conv(x)))
+        # 確定性設置已在模塊導入時完成
+        # x = self.conv(x)
+
+        x = self.relu(self.bn(self.conv(x)))
+        return x
 
 
 class DWConv(nn.Module):
@@ -56,13 +104,14 @@ class DWConv(nn.Module):
             groups=out_channels,
             bias=False,
         )
-        self.norm = nn.BatchNorm2d(out_channels, eps=1e-5)
+        self.norm = nn.BatchNorm2d(out_channels)  # 使用修正版自定義 BatchNorm2d
         self.act = nn.ReLU(inplace=True)
         self.projection = nn.Conv2d(
             out_channels, out_channels, kernel_size=1, bias=False
         )
 
     def forward(self, x):
+        # 確定性設置已在模塊導入時完成
         out = self.group_conv3x3(x)
         out = self.norm(out)
         out = self.act(out)
@@ -229,21 +278,6 @@ class LinearAttention(nn.Module):
         queried_values = queried_values * v_length
 
         return queried_values.contiguous()
-
-
-class MLP2(nn.Module):
-    def __init__(self, in_features, mlp_ratio=4):
-        super(MLP2, self).__init__()
-        hidden_features = in_features * mlp_ratio
-
-        self.fc = nn.Sequential(
-            nn.Linear(in_features, hidden_features),
-            nn.GELU(),
-            nn.Linear(hidden_features, in_features),
-        )
-
-    def forward(self, x):
-        return self.fc(x)
 
 
 def make_matching_figure(

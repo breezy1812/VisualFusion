@@ -1,5 +1,7 @@
 from torch import nn
 import torch
+from .bn import BatchNorm2d
+from .gn import GroupNorm
 from .utils import CBR, DWConv, MLP
 import torch.nn.functional as F
 
@@ -21,7 +23,7 @@ class SemLA_Fusion(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (BatchNorm2d, GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
@@ -59,7 +61,7 @@ class JConv(nn.Module):
         super(JConv, self).__init__()
         self.feat_trans = CBR(in_channels, out_channels)
         self.dwconv = DWConv(out_channels)
-        self.norm = nn.BatchNorm2d(out_channels, eps=1e-5)
+        self.norm = BatchNorm2d(out_channels, eps=1e-5)
         self.mlp = MLP(out_channels, bias=True)
 
     def forward(self, x):
