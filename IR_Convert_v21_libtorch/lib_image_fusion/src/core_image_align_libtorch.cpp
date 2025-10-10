@@ -39,65 +39,20 @@ namespace core
       device = cuda;
     }
 
-    // 載入 FP32 TorchScript 模型
+    // 載入 TorchScript 模型（FP16 或 FP32）
     net = torch::jit::load(param_.model_path);
     net.eval();
     net.to(device);
 
-    // ⭐ 業界推薦方案：在 C++ 端動態轉換為 FP16（若啟用）
-    if (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0) {
-      printf("🔄 Converting FP32 model to FP16 (dynamic conversion in C++)...\n");
-      
-      // 步驟 1：整體模型轉換
-      net.to(torch::kHalf);
-      
-      // 步驟 2：遍歷所有子模組確保轉成半精度
-      for (auto child : net.children()) {
-        child.to(torch::kHalf);
-      }
-      
-      // 步驟 3：遍歷所有參數強制轉成半精度
-      int param_count = 0;
-      for (at::Tensor param : net.parameters()) {
-        param.set_data(param.data().to(torch::kHalf));
-        param_count++;
-      }
-      printf("  - Converted %d parameters to FP16\n", param_count);
-      
-      // 步驟 4：遍歷所有 buffer，但保持 BatchNorm 統計為 FP32（避免數值不穩定）
-      int buffer_count = 0;
-      int buffer_skipped = 0;
-      for (at::Tensor buffer : net.buffers()) {
-        // BatchNorm 的 running_mean、running_var 保持 FP32 以維持數值穩定性
-        if (buffer.dtype() == torch::kFloat && buffer.numel() > 0) {
-          // 檢查是否為 BatchNorm 統計 buffer（通常是 1D tensor）
-          if (buffer.dim() == 1) {
-            buffer_skipped++;
-            continue;  // 保持 FP32
-          }
-        }
-        buffer.set_data(buffer.data().to(torch::kHalf));
-        buffer_count++;
-      }
-      printf("  - Converted %d buffers to FP16, kept %d buffers as FP32 (BatchNorm statistics)\n", 
-             buffer_count, buffer_skipped);
-      
-      // 確保所有 CUDA 任務完成
-      if (torch::cuda::is_available()) {
-        torch::cuda::synchronize();
-      }
-      
-      printf("✅ Model successfully converted to FP16 (mixed precision)\n");
-      printf("  - Core layers: FP16 (Tensor Core acceleration)\n");
-      printf("  - BatchNorm statistics: FP32 (numerical stability)\n");
-      printf("  - Ready for inference\n");
-    }
-
+    // ⭐ 模型已在 Python 端轉換為對應精度，C++ 端無需額外轉換
     printf("Model initialization completed\n");
     printf("  - Mode: %s\n", param_.mode.c_str());
     printf("  - Device: %s\n", param_.device.c_str());
     if (param_.mode.compare("fp16") == 0) {
-      printf("  - Precision: FP16 (dynamically converted from FP32 model)\n");
+      printf("  - Precision: FP16 (pre-converted from Python)\n");
+      printf("  - Model weights: FP16\n");
+      printf("  - Input tensors will be: FP16\n");
+      printf("  - Ready for Tensor Core acceleration\n");
     } else {
       printf("  - Precision: FP32\n");
     }
@@ -160,8 +115,6 @@ namespace core
     // 根據 pred_mode 決定使用 FP32 還是 FP16
     bool use_fp16 = (param_.mode.compare("fp16") == 0 && param_.device.compare("cuda") == 0);
     
-    // 計時 - 數據準備開始
-    auto data_prep_start = std::chrono::high_resolution_clock::now();
     
     torch::Tensor eo_tensor, ir_tensor;
     
@@ -195,9 +148,6 @@ namespace core
       eo_tensor = torch::from_blob(eo_float.ptr<float>(), {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone();
       ir_tensor = torch::from_blob(ir_float.ptr<float>(), {1, 1, param_.pred_height, param_.pred_width}, torch::kFloat32).clone();
     }
-    
-    auto data_prep_end = std::chrono::high_resolution_clock::now();
-    double data_prep_time = std::chrono::duration_cast<std::chrono::microseconds>(data_prep_end - data_prep_start).count() / 1000.0; // ms
     
     // 計時 - 模型推論開始
     auto model_inference_start = std::chrono::high_resolution_clock::now();
@@ -247,10 +197,10 @@ namespace core
     writeTimingToCSV("Model_Inference", model_inference_time, leng, filename);
     
     // 輸出詳細計時信息
-    printf("⏱️  Timing breakdown:\n");
-    printf("  - Data preparation: %.3f ms\n", data_prep_time);
-    printf("  - Model inference: %.3f ms (%.6f s)\n", model_inference_time * 1000, model_inference_time);
-    printf("  - Total: %.3f ms\n", data_prep_time + model_inference_time * 1000);
+    // printf("⏱️  Timing breakdown:\n");
+    // printf("  - Data preparation: %.3f ms\n", data_prep_time);
+    // printf("  - Model inference: %.3f ms (%.6f s)\n", model_inference_time * 1000, model_inference_time);
+    // printf("  - Total: %.3f ms\n", data_prep_time + model_inference_time * 1000);
 
     // DEBUG: 輸出特徵點數量
     std::cout << "  - Model extracted " << eo_pts.size() << " feature point pairs" << std::endl;

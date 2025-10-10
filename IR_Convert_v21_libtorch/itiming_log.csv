@@ -1,0 +1,11 @@
+Filename,Operation,Time_s,Mode,keypoints
+2024-07-11_14-16-32,Model_Inference,0.010894,fp32,422
+2024-07-11_14-14-24,Model_Inference,0.010793,fp32,402
+2024-07-10_15-40-03,Model_Inference,0.010806,fp32,505
+2024-07-10_15-51-48,Model_Inference,0.010930,fp32,305
+2024-07-10_15-52-36,Model_Inference,0.010910,fp32,277
+2024-07-10_15-43-56,Model_Inference,0.011321,fp32,355
+2024-07-11_14-12-14,Model_Inference,0.011112,fp32,467
+2024-07-11_14-19-12,Model_Inference,0.011679,fp32,343
+2024-07-10_15-44-58,Model_Inference,0.010920,fp32,360
+2024-07-11_14-02-35,Model_Inference,0.011148,fp32,575

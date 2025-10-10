@@ -4,7 +4,7 @@
     "output": false,
 
     "device": "cuda",
-    "pred_mode": "fp16",
+    "pred_mode": "fp32",
     "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_fp32.zip",
 
     "VideoCut":true,
