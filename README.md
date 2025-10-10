@@ -60,7 +60,7 @@ VisualFusion_libtorch/
 │   ├── lib_image_fusion/        # Core libraries (similar structure)
 │   └── model/                   # ONNX models
 │
-├── tensorRT/                    # TensorRT implementation (WIP)
+├── tensorRT/                    # TensorRT implementation
 │   ├── main.cpp                 # TensorRT pipeline
 │   ├── lib_image_fusion/        # Core libraries
 │   └── model/                   # TensorRT engines
@@ -82,7 +82,7 @@ VisualFusion_libtorch/
 |--------|--------|--------------|-----------|----------------|
 | **LibTorch** | ✅ Ready | `.zip` (TorchScript) | FP32/FP16 | CPU/CUDA |
 | **ONNX Runtime** | ✅ Ready | `.onnx` | FP32/FP16 | CPU/CUDA |
-| **TensorRT** | 🚧 WIP | `.engine` | FP32/FP16 | CUDA |
+| **TensorRT** | ✅ Ready | `.engine` | FP32/FP16 | CUDA |
 
 ## 📋 Requirements
 
@@ -147,6 +147,15 @@ cd Onnx
 bash gcc.sh
 ```
 
+### 5. Build TensorRT Version (Optional)
+
+```bash
+cd tensorRT
+bash gcc.sh
+```
+
+**Note**: TensorRT version requires TensorRT 8.4.x libraries installed and in `LD_LIBRARY_PATH`.
+
 ## 📦 Model Conversion
 
 The project supports multiple inference backends. Convert the pretrained model to your desired format:
@@ -190,7 +199,7 @@ python export_to_onnx_fp16.py
 ```
 - **Output**: `../Onnx/model/onnx_op12_fp16.onnx`
 
-### TensorRT (WIP)
+### TensorRT
 
 #### FP32 Engine
 ```bash
@@ -208,7 +217,9 @@ python export_to_tensorrt_fp16.py
 - **Pipeline**: PyTorch FP32 → ONNX FP32 → TensorRT FP16 (using `trtexec --fp16`)
 - **Output**: `../tensorRT/model/GPU30s/trt_semla_fp16_op12.engine`
 
-**Note**: TensorRT conversion requires CUDA, cuDNN, and TensorRT libraries installed.
+**Requirements**: TensorRT conversion requires CUDA 11.x, cuDNN 8.x, and TensorRT 8.4.x libraries installed.
+
+**Note**: TensorRT engines are GPU-specific and should be rebuilt when moving to different hardware.
 
 ## ⚙️ Configuration
 
@@ -369,6 +380,15 @@ output/
 cd Onnx
 ./build/out config/config.json
 ```
+
+### TensorRT Version
+
+```bash
+cd tensorRT
+./build/out config/config.json
+```
+
+**Note**: Ensure TensorRT engine (`.engine`) is pre-built before running. See [Model Conversion](#-model-conversion) section.
 
 ## 🔍 Processing Pipeline
 
