@@ -314,7 +314,7 @@ All runtime parameters are configured via `config/config.json`:
 ```json
 {
     "perspective_check": true,
-    "perspective_distance": 10,
+    "perspective_distance": 6,
     "perspective_accuracy": 0.85,
     
     "align_distance_last": 15.0,
@@ -331,7 +331,7 @@ All runtime parameters are configured via `config/config.json`:
 | Parameter | Description |
 |-----------|-------------|
 | `perspective_check` | Enable perspective validation |
-| `perspective_distance` | RANSAC inlier threshold (pixels) |
+| `perspective_distance` | RANSAC inlier threshold (pixels, default: 6.0) |
 | `perspective_accuracy` | Minimum inlier ratio (0.0-1.0) |
 | `align_distance_*` | Feature alignment distance thresholds |
 | `align_angle_*` | Angle-based filtering parameters |
@@ -358,7 +358,7 @@ input/
 
 ```bash
 cd IR_Convert_v21_libtorch
-./build/out config/config.json
+./build/out 
 ```
 
 #### Output
@@ -378,14 +378,14 @@ output/
 
 ```bash
 cd Onnx
-./build/out config/config.json
+./build/out 
 ```
 
 ### TensorRT Version
 
 ```bash
 cd tensorRT
-./build/out config/config.json
+./build/out 
 ```
 
 **Note**: Ensure TensorRT engine (`.engine`) is pre-built before running. See [Model Conversion](#-model-conversion) section.
@@ -397,65 +397,65 @@ The system follows this processing flow:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. Input Loading                                            │
-│    - Read EO-IR image pairs from input directory           │
+│    - Read EO-IR image pairs from input directory            │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
-│ 2. Video/Image Cropping (Optional)                         │
-│    - Apply VideoCut if enabled                             │
-│    - Apply PictureCut if enabled                           │
+│ 2. Video/Image Cropping (Optional)                          │
+│    - Apply VideoCut if enabled                              │
+│    - Apply PictureCut if enabled                            │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
 │ 3. Image Preprocessing                                      │
 │    - Convert to grayscale                                   │
-│    - Resize to pred_width × pred_height (320×240)          │
+│    - Resize to pred_width × pred_height (320×240)           │
 │    - Normalize to [0, 1]                                    │
-│    - Convert to FP16 (if pred_mode="fp16")                 │
+│    - Convert to FP16 (if pred_mode="fp16")                  │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
-│ 4. Deep Learning Inference (SemLA Model)                   │
-│    - Input: EO and IR grayscale images (320×240)          │
-│    - Model: Pre-converted TorchScript (FP16/FP32)         │
-│    - Output: Corresponding keypoint pairs (up to 1200)    │
-│    - Precision: Matches pred_mode (FP16 or FP32)          │
+│ 4. Deep Learning Inference (SemLA Model)                    │
+│    - Input: EO and IR grayscale images (320×240)            │
+│    - Model: Pre-converted TorchScript (FP16/FP32)           │
+│    - Output: Corresponding keypoint pairs (up to 1200)      │
+│    - Precision: Matches pred_mode (FP16 or FP32)            │
 │    - Device: CPU or CUDA                                    │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
 │ 5. Homography Computation                                   │
-│    - RANSAC with 8.0px threshold                           │
+│    - RANSAC with 6.0px threshold                            │
 │    - Perspective validation                                 │
 │    - Outlier filtering                                      │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
-│ 6. Homography Smoothing (Temporal Consistency)             │
-│    - Check translation/rotation differences                │
-│    - Weighted average with previous frame                  │
-│    - Fallback to previous on large jumps                   │
+│ 6. Homography Smoothing (Temporal Consistency)              │
+│    - Check translation/rotation differences                 │
+│    - Weighted average with previous frame                   │
+│    - Fallback to previous on large jumps                    │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
 │ 7. Edge Detection                                           │
-│    - Canny edge detection on both images                   │
+│    - Canny edge detection on both images                    │
 │    - Adaptive thresholding                                  │
 │    - Multi-scale edge extraction                            │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
 │ 8. Image Fusion                                             │
-│    - Warp IR image using homography                        │
+│    - Warp IR image using homography                         │
 │    - Shadow-enhanced blending                               │
 │    - Edge-aware composition                                 │
-│    - Interpolation: Linear or Cubic                        │
+│    - Interpolation: Linear or Cubic                         │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
 │ 9. Output Generation                                        │
 │    - Fused image                                            │
-│    - Visualization with keypoints and matches              │
+│    - Visualization with keypoints and matches               │
 │    - Save to output directory                               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -472,15 +472,16 @@ The system follows this processing flow:
 
 **Post-processing**:
 - Filter out invalid points (0, 0)
-- RANSAC outlier removal (8.0px threshold)
-- Perspective validation (min 85% inliers)
+- RANSAC outlier removal (6.0px threshold)
+- Perspective validation (min 99% inliers)
 
 ### 2. Homography Computation
 
 **Method**: RANSAC-based homography estimation
 - **Algorithm**: `cv::findHomography()` with `RANSAC`
-- **Threshold**: 8.0 pixels
-- **Min Inliers**: Configurable via `perspective_accuracy`
+- **Threshold**: 6.0 pixels (configurable via `perspective_distance`)
+- **Confidence**: 0.99 (99% confidence)
+- **Min Inliers**: Configurable via `perspective_accuracy` (default 0.85)
 
 **Validation**:
 - Check inlier ratio
@@ -530,79 +531,6 @@ if (|current_tx - prev_tx| > max_translation_diff ||
    - Interpolation: Linear or Cubic
 5. **Output**: Fused RGB image
 
-## 📊 Performance
-
-### Timing Breakdown (Typical)
-
-On NVIDIA RTX 3090 (FP16 mode):
-
-| Stage | Time (ms) |
-|-------|-----------|
-| Image Preprocessing | 2-5 |
-| Model Inference (FP16) | 5-10 |
-| Homography Computation | 1-2 |
-| Edge Detection | 3-5 |
-| Image Fusion | 5-10 |
-| **Total** | **20-35** |
-
-**Throughput**: ~30-50 FPS
-
-### GPU Acceleration
-
-- **FP32 Mode**: Standard precision, maximum accuracy
-- **FP16 Mode**: 1.5-2x faster inference, minimal accuracy loss
-- **Tensor Core**: Automatically utilized in FP16 mode (Ampere+ GPUs)
-
-**Note**: Models are pre-converted to FP16/FP32 in Python. C++ loads them directly without runtime conversion.
-
-## 🐛 Troubleshooting
-
-### Model Loading Errors
-
-**Error**: `torch::jit::load()` fails
-
-**Solution**:
-```bash
-# Check model file exists
-ls -la IR_Convert_v21_libtorch/model/
-
-# Verify model format
-file IR_Convert_v21_libtorch/model/SemLA_fp16.zip
-
-# Regenerate model
-cd convert_to_libtorch
-python export_to_jit_fp16.py  # or export_to_jit_fp32.py
-```
-
-### Precision Mode Mismatch
-
-**Error**: Model dtype doesn't match pred_mode
-
-**Solution**:
-- **pred_mode="fp16"** requires `SemLA_fp16.zip`
-- **pred_mode="fp32"** requires `SemLA_fp32.zip`
-- Update `config.json`:
-  ```json
-  {
-    "pred_mode": "fp16",
-    "model_path": "/path/to/SemLA_fp16.zip"
-  }
-  ```
-
-### CUDA Out of Memory
-
-**Error**: `CUDA out of memory`
-
-**Solutions**:
-1. Switch to CPU mode:
-   ```json
-   {
-     "device": "cpu",
-     "pred_mode": "fp32"
-   }
-   ```
-2. Use FP16 mode (requires less GPU memory)
-3. Reduce batch processing
 
 ### Poor Alignment Quality
 
