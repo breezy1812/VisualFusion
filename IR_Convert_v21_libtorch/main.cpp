@@ -483,10 +483,10 @@ int main(int argc, char **argv)
 //         每次推論 kernel 啟動時，thread 排程的順序不是保證 deterministic。
 //         因為 onnx 在執行過程中對於硬體調用能力較差，計算時因為，所以每次推論結果會有機率行出現錯誤（3%~5%）。
 
-  // ----- 創建共用的非模型實例（模型只初始化一次） -----
-  std::cout << "\n=== Initializing shared non-model instances ===" << std::endl;
+  // ----- 創建共用實例（包含模型，只初始化一次，整個程序共用） -----
+  std::cout << "\n=== Initializing shared instances (including model - ONE TIME ONLY) ===" << std::endl;
   
-  // Create shared instances that will be used for all images (除了模型)
+  // Create shared instances that will be used for all images AND videos
   auto shared_image_gray = core::ImageToGray::create_instance(core::ImageToGray::Param());
   auto shared_image_resizer = core::ImageResizer::create_instance(
       core::ImageResizer::Param()
@@ -502,7 +502,18 @@ int main(int argc, char **argv)
   auto shared_image_perspective = core::ImagePerspective::create_instance(
       core::ImagePerspective::Param()
           .set_check(perspective_check, perspective_accuracy, perspective_distance));
-  std::cout << "Non-model instances initialized. Model will be created per image." << std::endl;
+  
+  // ⭐ 關鍵修改：創建共用的 model 實例，整個程序只初始化一次（包含 warmup）
+  auto shared_image_align = core::ImageAlign::create_instance(
+      core::ImageAlign::Param()
+          .set_size(pred_w, pred_h, out_w, out_h)
+          .set_net(device, model_path, pred_mode)
+          .set_distance(align_distance_line, align_distance_last, 20)
+          .set_angle(align_angle_mean, align_angle_sort)
+          .set_bias(0, 0));
+  
+  std::cout << "✅ All shared instances initialized (including model with warmup)" << std::endl;
+  std::cout << "✅ Model warmup completed - ready for all subsequent inferences" << std::endl;
 
   // ----- 處理所有圖片 -----
   for (const auto &file : directory_iterator(input_dir))
@@ -630,22 +641,14 @@ int main(int argc, char **argv)
         
         // ===== 結束新增部分 =====
         
-        // ----- 為每張圖片創建新的model實例 -----
-        std::cout << "\n=== Creating fresh model instance for image: " << img_name << " ===" << std::endl;
-        auto image_align = core::ImageAlign::create_instance(
-            core::ImageAlign::Param()
-                .set_size(pred_w, pred_h, out_w, out_h)
-                .set_net(device, model_path, pred_mode)
-                .set_distance(align_distance_line, align_distance_last, 20)
-                .set_angle(align_angle_mean, align_angle_sort)
-                .set_bias(0, 0));
-        std::cout << "Fresh model initialization completed for " << img_name << std::endl;
+        // ⭐ 修改：使用共用的 model 實例，不再重複初始化和 warmup
+        std::cout << "\n=== Using shared model instance for image: " << img_name << " (no warmup needed) ===" << std::endl;
         
         // 注意: FP16轉換由LibTorch內部處理，不需要在OpenCV層面轉換
-        // 單次model對齊
+        // 單次model對齊（使用共用實例）
         eo_pts.clear(); ir_pts.clear();
         cv::Mat M_single;
-        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single, img_name);
+        shared_image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M_single, img_name);
         
         
         // ========== RANSAC 濾除 outlier，提升精度 ==========
@@ -791,21 +794,13 @@ int main(int argc, char **argv)
       
       // 每50幀計算一次特徵點
       if (cnt % compute_per_frame == 0) {
-        // ----- 為每個計算幀創建新的model實例 -----
+        // ⭐ 修改：使用共用的 model 實例，不再每幀重複初始化和 warmup
         std::string frame_identifier = "frame_" + std::to_string(cnt);
-        std::cout << "\n=== Creating fresh model instance for " << frame_identifier << " ===" << std::endl;
-        auto image_align = core::ImageAlign::create_instance(
-            core::ImageAlign::Param()
-                .set_size(pred_w, pred_h, out_w, out_h)
-                .set_net(device, model_path, pred_mode)
-                .set_distance(align_distance_line, align_distance_last, 20)
-                .set_angle(align_angle_mean, align_angle_sort)
-                .set_bias(0, 0));
-        std::cout << "Fresh model initialization completed for " << frame_identifier << std::endl;
+        std::cout << "\n=== Using shared model instance for " << frame_identifier << " (no warmup needed) ===" << std::endl;
         
         eo_pts.clear(); ir_pts.clear();
         timer_align.start();
-        image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M, frame_identifier);
+        shared_image_align->align(gray_eo, gray_ir, eo_pts, ir_pts, M, frame_identifier);
         cout << "  - Frame " << cnt << ": Found " << eo_pts.size() << " feature point pairs from model" << endl;
         timer_align.stop();
 

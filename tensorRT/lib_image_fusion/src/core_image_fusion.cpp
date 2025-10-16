@@ -241,10 +241,23 @@ namespace core
     return out;
     */
     
-    // 新程式碼：按照Python版本實作
+    // 新程式碼：按照Python版本實作，並加入 edge_border 膨脹功能
     // Python: img_combined = img_ir + edge; img_combined = np.clip(img_combined, 0, 255).astype(np.uint8)
     
     cv::Mat out;
+    
+    // ⭐ 步驟1：對邊緣進行膨脹處理（使邊緣更粗、更明顯）
+    cv::Mat eo_dilated;
+    if (param_.edge_border > 1)
+    {
+      // 使用 param_.bdStruct 進行膨脹，邊緣會根據 edge_border 參數變粗
+      cv::dilate(eo, eo_dilated, param_.bdStruct);
+      // std::cout << "[DEBUG] Edge dilated with edge_border=" << param_.edge_border << std::endl;
+    }
+    else
+    {
+      eo_dilated = eo.clone();
+    }
     
     // 確保兩個輸入都是3通道
     cv::Mat ir_3ch, eo_3ch;
@@ -254,14 +267,14 @@ namespace core
     else
       ir_3ch = ir.clone();
     
-    if (eo.channels() == 1)
+    if (eo_dilated.channels() == 1)
     {
       // 邊緣圖像轉換為3通道，模擬Python的np.repeat(edge, 3, axis=-1)
-      cv::cvtColor(eo, eo_3ch, cv::COLOR_GRAY2BGR);
+      cv::cvtColor(eo_dilated, eo_3ch, cv::COLOR_GRAY2BGR);
     }
     else
     {
-      eo_3ch = eo.clone();
+      eo_3ch = eo_dilated.clone();
     }
     
     // 處理 shadow，與原始code一致
@@ -272,8 +285,18 @@ namespace core
       cv::cvtColor(shadow, shadow, cv::COLOR_GRAY2BGR); // 轉為3通道
       cv::subtract(ir_3ch, shadow, ir_3ch); // 先從ir_3ch減去shadow
     }
-    // 直接相加，與Python相同
-    cv::add(ir_3ch, eo_3ch, out);
+    // ⭐ 修改：增強邊緣線條，讓邊緣更明顯、更清晰
+    // 原本：直接相加
+    // cv::add(ir_3ch, eo_3ch, out);
+    
+    // 步驟1：增強邊緣對比度（放大邊緣強度）
+    cv::Mat eo_enhanced;
+    eo_3ch.convertTo(eo_enhanced, -1, 1.8, 0);  // 對比度提升 1.8 倍
+    
+    // 步驟2：使用 alpha 混合，大幅提高邊緣權重
+    // alpha = 0.6: IR佔60%, beta = 1.0: EO邊緣佔100%（完全顯示邊緣）
+    // 這樣邊緣會非常明顯，線條更清晰
+    cv::addWeighted(ir_3ch, 0.6, eo_enhanced, 1.0, 0, out);
     
     // Clip to [0, 255] range，與Python相同
     cv::Mat clipped;

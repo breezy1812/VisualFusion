@@ -495,8 +495,14 @@ int main(int argc, char **argv)
       
       if (isOut)
       {
-        writer.open(save_path + "_shadow.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
-        // writer_fusion.open(save_path + "_fusion.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w, out_h));
+        // 輸出影片1：IR + EO warped + Fusion（三者並排）
+        writer.open(save_path + "_compare.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w * 3, out_h));
+        // 輸出影片2：只有融合結果（單獨純淨版）
+        writer_fusion.open(save_path + "_fusion.mp4", cv::VideoWriter::fourcc('a', 'v', 'c', '1'), fps_ir, cv::Size(out_w, out_h));
+        
+        std::cout << "✅ Will output TWO videos:" << std::endl;
+        std::cout << "   1. " << save_path << "_compare.mp4 (IR | EO_warped | Fusion side-by-side)" << std::endl;
+        std::cout << "   2. " << save_path << "_fusion.mp4 (Fusion only)" << std::endl;
       }
     }
     else
@@ -881,25 +887,26 @@ int main(int argc, char **argv)
         cv::resize(eo_warped_fullsize, eo_warped_resized, cv::Size(out_w, out_h), 0, 0, interp);
         eo_warped_resized.copyTo(temp_pair(cv::Rect(out_w, 0, out_w, out_h)));
         
-        // 參考main0712.cpp的畫點劃線方式
-        if (eo_pts.size() > 0 && ir_pts.size() > 0) {
-          for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
-            cv::Point2i pt_ir = ir_pts[i];
-            cv::Point2i pt_eo = eo_pts[i];
-            pt_eo.x += out_w; // EO特徵點在右側圖片，需要加上偏移
-            
-            // 邊界檢查，確保點在有效範圍內
-            if (pt_ir.x >= 0 && pt_ir.x < out_w && pt_ir.y >= 0 && pt_ir.y < out_h &&
-                pt_eo.x >= out_w && pt_eo.x < out_w * 2 && pt_eo.y >= 0 && pt_eo.y < out_h) {
-              // 繪製特徵點（使用填充圓圈）
-              cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1); // IR: 綠色
-              cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1); // EO: 紅色
-              
-              // 繪製匹配線
-              cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1); // 藍色線
-            }
-          }
-        }
+        // ⭐ 已停用：不再繪製特徵點和匹配線，輸出更乾淨的影片
+        // 參考main0712.cpp的畫點劃線方式 - 現已停用
+        // if (eo_pts.size() > 0 && ir_pts.size() > 0) {
+        //   for (int i = 0; i < std::min((int)eo_pts.size(), (int)ir_pts.size()); i++) {
+        //     cv::Point2i pt_ir = ir_pts[i];
+        //     cv::Point2i pt_eo = eo_pts[i];
+        //     pt_eo.x += out_w; // EO特徵點在右側圖片，需要加上偏移
+        //     
+        //     // 邊界檢查，確保點在有效範圍內
+        //     if (pt_ir.x >= 0 && pt_ir.x < out_w && pt_ir.y >= 0 && pt_ir.y < out_h &&
+        //         pt_eo.x >= out_w && pt_eo.x < out_w * 2 && pt_eo.y >= 0 && pt_eo.y < out_h) {
+        //       // 繪製特徵點（使用填充圓圈）
+        //       cv::circle(temp_pair, pt_ir, 3, cv::Scalar(0, 255, 0), -1); // IR: 綠色
+        //       cv::circle(temp_pair, pt_eo, 3, cv::Scalar(0, 0, 255), -1); // EO: 紅色
+        //       
+        //       // 繪製匹配線
+        //       cv::line(temp_pair, pt_ir, pt_eo, cv::Scalar(255, 0, 0), 1); // 藍色線
+        //     }
+        //   }
+        // }
       } else {
         // 非計算幀，使用當前的 homography
         M = homo_manager.getCurrentHomography();
@@ -943,7 +950,10 @@ int main(int argc, char **argv)
       // 影片模式下直接寫入影片，不顯示GUI
       if (isVideo) {
         if (isOut) {
+          // 寫入影片1：三者並排的對比影片
           writer.write(img);
+          // 寫入影片2：只有融合結果的純淨影片
+          writer_fusion.write(img_combined);
         }
         // int key = waitKey(1); // 註解掉以避免GUI錯誤
         // if (key == 27)
@@ -976,8 +986,11 @@ int main(int argc, char **argv)
 
     eo_cap.release();
     ir_cap.release();
-    if (isOut)
+    if (isOut) {
       writer.release();
+      writer_fusion.release();
+      std::cout << "\n✅ TWO videos saved successfully!" << std::endl;
+    }
     if (isOut)
       writer_fusion.release(); // 新增：釋放融合影片
 
