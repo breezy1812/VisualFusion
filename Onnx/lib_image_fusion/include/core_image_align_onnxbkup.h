@@ -15,30 +15,25 @@ public:
 #define degree_to_rad(degree) ((degree) * M_PI / 180.0);
 
     struct Param {
-        // 預測尺寸
+
         int pred_width = 0;
         int pred_height = 0;
 
-        // 小視窗尺寸
         int small_window_width = 0;
         int small_window_height = 0;
 
-        // 切割視窗尺寸
         int clip_window_width = 0;
         int clip_window_height = 0;
 
-        // 輸出座標縮放尺寸
         float out_width_scale = 1.0;
         float out_height_scale = 1.0;
 
         int bias_x = 0;
         int bias_y = 0;
 
-        // 模型
         std::string device = "cpu";
         std::string model_path = "";
 
-        // 前一幀距離、水平/垂直篩選距離、平均角度範圍、排序角度範圍
         float distance_last = 10.0;
         float distance_line = 10.0;
         float distance_mean = 20.0;
@@ -61,13 +56,12 @@ public:
         }
 
         Param &set_model(std::string device, std::string model_path) {
-            // 檢查模型
+
             if (!std::experimental::filesystem::exists(model_path))
                 throw std::invalid_argument("Model file not found");
             else
                 this->model_path = model_path;
 
-            // 設定裝置
             if (device.compare("cpu") == 0 || device.compare("cuda") == 0)
                 this->device = device;
             else

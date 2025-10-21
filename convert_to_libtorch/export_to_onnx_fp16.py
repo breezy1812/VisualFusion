@@ -1,14 +1,11 @@
 
 import os
-# 全局環境變數禁止 TF32 (CUDA 30 系列及以後NVIDIA GPU重要)
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
-# PYTHONHASHSEED 保持確定性
 os.environ['PYTHONHASHSEED'] = '42'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
-# ONNX Runtime 確定性環境
 os.environ['ORT_DISABLE_THREAD_SPINNING'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -16,7 +13,6 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
-# 現在導入 torch
 import torch
 import random
 import numpy as np
@@ -29,18 +25,14 @@ def set_deterministic():
     np.random.seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-    
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-    # 禁用 TF32
     if hasattr(torch.backends.cuda, 'matmul'):
         torch.backends.cuda.matmul.allow_tf32 = False
         print("✅ 已禁用 CUDA matmul TF32（確保跨 GPU 一致性）")
     if hasattr(torch.backends.cudnn, 'allow_tf32'):
         torch.backends.cudnn.allow_tf32 = False
         print("✅ 已禁用 cuDNN TF32（確保跨 GPU 一致性）")
-    
     try:
         torch.use_deterministic_algorithms(True, warn_only=True)
     except Exception:
@@ -48,11 +40,6 @@ def set_deterministic():
 
 set_deterministic()
 
-# 你後面再接著你的模型載入與轉換代碼即可...
-
-
-
-# 建議先設置確定性（視需要）
 def set_deterministic():
     torch.manual_seed(42)
     random.seed(42)
@@ -67,12 +54,10 @@ def set_deterministic():
     if hasattr(torch.backends.cudnn, 'allow_tf32'):
         torch.backends.cudnn.allow_tf32 = False
 
-# set_deterministic()
-
 from model_jit.SemLA import SemLA
 
 device = torch.device('cuda')
-fpMode = torch.float32  # 使用 FP32（最穩定）
+fpMode = torch.float32
 
 print("載入模型 (FP32)...")
 matcher = SemLA(device=device, fp=fpMode)
@@ -85,7 +70,7 @@ print(f"建立輸入張量 (FP32)，尺寸: {height}x{width}")
 dummy_input_1 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 dummy_input_2 = torch.randn(1, 1, height, width).to(device, dtype=fpMode)
 
-output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model"
+output_dir = "../Onnx/model"
 os.makedirs(output_dir, exist_ok=True)
 onnx_path_fp32 = f"{output_dir}/onnx_op12_fp32.onnx"
 onnx_path_fp16 = f"{output_dir}/onnx_op12_fp16.onnx"
@@ -112,25 +97,19 @@ onnx.save(model_simp, onnx_path_fp32)
 
 print("✅ ONNX FP32 模型已儲存至:", onnx_path_fp32)
 
-# 步驟 2: 使用 onnxconverter-common 轉換為 FP16（自動排除所有 Cast 節點）
 print("\n正在將 ONNX FP32 轉換為 FP16（自動排除 Cast 節點）...")
 try:
     from onnxconverter_common import float16
-    
-    # 自動找出所有 Cast 節點並排除
     exclude_nodes = [node.name for node in model_simp.graph.node if 'Cast' in node.name]
-    
     print(f"   發現 {len(exclude_nodes)} 個 Cast 節點，將排除轉換:")
-    for name in exclude_nodes[:10]:  # 只顯示前 10 個
+    for name in exclude_nodes[:10]:
         print(f"      - {name}")
     if len(exclude_nodes) > 10:
         print(f"      ... 還有 {len(exclude_nodes) - 10} 個")
-    
-    # keep_io_types=False，讓 I/O 也轉為 FP16，但排除 Cast 節點
     model_fp16 = float16.convert_float_to_float16(
         model_simp, 
         keep_io_types=False,
-        node_block_list=exclude_nodes  # 排除所有 Cast 節點
+        node_block_list=exclude_nodes
     )
     onnx.save(model_fp16, onnx_path_fp16)
     print("✅ ONNX FP16 模型已儲存至:", onnx_path_fp16)

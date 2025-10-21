@@ -1,2 +1,0 @@
-下週再去用export onnt tensorrt compatible.py轉成onnx
-然後看檔案最上面的TODO

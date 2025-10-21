@@ -50,7 +50,6 @@ class SemLA_Fusion(nn.Module):
 
         return featfuse
 
-
 class JConv(nn.Module):
     """Joint Convolutional blocks
 
@@ -70,8 +69,6 @@ class JConv(nn.Module):
         out = self.norm(x)
         x = x + self.mlp(out)
         return x
-
-
 
 class CR(nn.Module):
     """Convolution with Leaky ReLU

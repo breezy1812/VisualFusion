@@ -46,37 +46,28 @@ def main():
     print(f"  📦 ONNX OpSet: {args.opset}")
     print(f"  🔧 trtexec: {args.trtexec_path}")
     print("=" * 70)
-    
-    # 步驟 1: PyTorch → ONNX
     print("\n" + "=" * 70)
     print("步驟 1/2: 轉換 PyTorch → ONNX...")
     print("=" * 70)
-    
     if not convert_pytorch_to_onnx(args.model, args.onnx_output, args.opset):
         print("\n❌ PyTorch → ONNX 轉換失敗")
         return 1
-    
-    # 步驟 2: ONNX → TensorRT (使用 trtexec)
     print("\n" + "=" * 70)
     print("步驟 2/2: 轉換 ONNX → TensorRT (使用 trtexec)...")
     print("=" * 70)
-    
     if not convert_onnx_to_trt(args.onnx_output, args.trt_output, args.trtexec_path):
         print("\n❌ ONNX → TensorRT 轉換失敗")
         return 1
-    
     print("\n" + "=" * 70)
     print("✅ 轉換完成！")
     print("=" * 70)
     print(f"📌 TensorRT FP32 engine: {args.trt_output}")
     print("🔧 Update your configuration files to use this new engine.")
     print("=" * 70)
-    
     return 0
 
 def convert_pytorch_to_onnx(model_path, onnx_path, opset_version):
     """步驟 1: 使用 Python 將 PyTorch 轉換為 ONNX"""
-    
     python_script = f'''
     import os
     os.environ["NVIDIA_TF32_OVERRIDE"] = "0"
@@ -165,24 +156,18 @@ def convert_pytorch_to_onnx(model_path, onnx_path, opset_version):
     for op in sorted(ops):
         print(f"  - {{op}}")
     '''
-    
     try:
-        # 執行 Python 腳本
         result = subprocess.run(
             ['python3', '-c', python_script],
             capture_output=False,
             text=True,
             check=True
         )
-        
-        # 檢查 ONNX 檔案是否存在
         if not os.path.exists(onnx_path):
             print(f"❌ ONNX 檔案不存在: {onnx_path}")
             return False
-            
         print(f"✅ ONNX 檔案已建立: {onnx_path}")
         return True
-        
     except subprocess.CalledProcessError as e:
         print(f"❌ PyTorch → ONNX 轉換失敗")
         print(f"   錯誤: {e}")
@@ -193,25 +178,17 @@ def convert_pytorch_to_onnx(model_path, onnx_path, opset_version):
 
 def convert_onnx_to_trt(onnx_path, trt_path, trtexec_path):
     """步驟 2: 使用 trtexec 將 ONNX 轉換為 TensorRT"""
-    
-    # 設定環境變數
     env = os.environ.copy()
     env["NVIDIA_TF32_OVERRIDE"] = "0"
     env["LD_LIBRARY_PATH"] = "/circ330/TensorRT-8.4.3.1/lib:" + env.get("LD_LIBRARY_PATH", "")
-    
     print(f"✅ 環境變數: NVIDIA_TF32_OVERRIDE=0")
     print(f"✅ LD_LIBRARY_PATH: {env['LD_LIBRARY_PATH']}")
-    
-    # 確保輸出目錄存在
     os.makedirs(os.path.dirname(trt_path), exist_ok=True)
-    
     print("\n🔨 使用 trtexec 建立 TensorRT engine...")
     print(f"   - 輸入: {onnx_path}")
     print(f"   - 輸出: {trt_path}")
     print(f"   - 精度: FP32 (禁用 TF32)")
     print("")
-    
-    # 構建 trtexec 命令
     cmd = [
         trtexec_path,
         f"--onnx={onnx_path}",
@@ -221,11 +198,8 @@ def convert_onnx_to_trt(onnx_path, trt_path, trtexec_path):
         "--verbose",
         "--dumpLayerInfo"
     ]
-    
     log_file = "/circ330/trt_conversion_fp32.log"
-    
     try:
-        # 執行 trtexec，同時輸出到 console 和 log 檔案
         with open(log_file, 'w') as f:
             process = subprocess.Popen(
                 cmd,
@@ -235,19 +209,13 @@ def convert_onnx_to_trt(onnx_path, trt_path, trtexec_path):
                 env=env,
                 bufsize=1
             )
-            
-            # 即時輸出並寫入 log
             for line in process.stdout:
                 print(line, end='')
                 f.write(line)
-            
             process.wait()
-            
             if process.returncode != 0:
                 print(f"\n❌ trtexec 返回錯誤碼: {process.returncode}")
                 return False
-        
-        # 檢查輸出檔案
         if os.path.exists(trt_path):
             file_size = os.path.getsize(trt_path) / (1024 * 1024)
             print(f"\n✅ TensorRT Engine 已建立")
@@ -259,7 +227,6 @@ def convert_onnx_to_trt(onnx_path, trt_path, trtexec_path):
             print(f"\n❌ TensorRT Engine 檔案不存在: {trt_path}")
             print(f"📝 請檢查日誌: {log_file}")
             return False
-            
     except FileNotFoundError:
         print(f"❌ 找不到 trtexec: {trtexec_path}")
         print("   請確認 TensorRT 路徑正確")

@@ -1,11 +1,11 @@
 {
     "input_dir": "/circ330/videodata/Version3",
-    "output_dir": "/circ330/forgithub/VisualFusion_libtorch/Onnx/output",
+    "output_dir": "../output",
     "output": false,
 
     "device": "cuda",
     "pred_mode": "fp16",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/Onnx/model/onnx_op12_fp16.onnx",
+    "model_path": "../model/onnx_op12_fp16.onnx",
 
     "VideoCut":true,
     "Vcut_x": 870,

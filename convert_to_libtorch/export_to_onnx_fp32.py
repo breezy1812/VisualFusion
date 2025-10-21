@@ -1,14 +1,11 @@
 
 import os
-# 全局環境變數禁止 TF32 (CUDA 30 系列及以後NVIDIA GPU重要)
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
-# PYTHONHASHSEED 保持確定性
 os.environ['PYTHONHASHSEED'] = '42'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
-# ONNX Runtime 確定性環境
 os.environ['ORT_DISABLE_THREAD_SPINNING'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -16,7 +13,6 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
-# 現在導入 torch
 import torch
 import random
 import numpy as np
@@ -29,18 +25,14 @@ def set_deterministic():
     np.random.seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-    
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    
-    # 禁用 TF32
     if hasattr(torch.backends.cuda, 'matmul'):
         torch.backends.cuda.matmul.allow_tf32 = False
         print("✅ 已禁用 CUDA matmul TF32（確保跨 GPU 一致性）")
     if hasattr(torch.backends.cudnn, 'allow_tf32'):
         torch.backends.cudnn.allow_tf32 = False
         print("✅ 已禁用 cuDNN TF32（確保跨 GPU 一致性）")
-    
     try:
         torch.use_deterministic_algorithms(True, warn_only=True)
     except Exception:
@@ -48,11 +40,6 @@ def set_deterministic():
 
 set_deterministic()
 
-# 你後面再接著你的模型載入與轉換代碼即可...
-
-
-
-# 建議先設置確定性（視需要）
 def set_deterministic():
     torch.manual_seed(42)
     random.seed(42)
@@ -66,8 +53,6 @@ def set_deterministic():
         torch.backends.cuda.matmul.allow_tf32 = False
     if hasattr(torch.backends.cudnn, 'allow_tf32'):
         torch.backends.cudnn.allow_tf32 = False
-
-# set_deterministic()
 
 from model_jit.SemLA import SemLA
 
@@ -85,7 +70,7 @@ print(f"建立輸入張量，尺寸: {height}x{width}")
 dummy_input_1 = torch.randn(1, 1, height, width).to(device)
 dummy_input_2 = torch.randn(1, 1, height, width).to(device)
 
-output_dir = "/circ330/forgithub/VisualFusion_libtorch/Onnx/model"
+output_dir = "../Onnx/model"
 os.makedirs(output_dir, exist_ok=True)
 onnx_path = f"{output_dir}/SemLA_onnx_opset12_fp32.onnx"
 

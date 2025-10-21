@@ -1,11 +1,11 @@
 {
     "input_dir": "/circ330/videodata/Version1/",
-    "output_dir": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/output/",
+    "output_dir": "../output",
     "output": true,
 
     "device": "cuda",
-    "pred_mode": "fp32",
-    "model_path": "/circ330/forgithub/VisualFusion_libtorch/IR_Convert_v21_libtorch/model/SemLA_fp32.zip",
+    "pred_mode": "fp16",
+    "model_path": "../model/SemLA_fp16.zip",
 
     "VideoCut":true,
     "Vcut_x": 870,
@@ -28,7 +28,7 @@
     "pred_height": 240,
 
     "fusion_shadow": true,
-    "fusion_edge_border":2,
+    "fusion_edge_border":1.5,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
