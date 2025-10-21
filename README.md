@@ -5,12 +5,20 @@
 ## 📋 Version Information
 
 ```
+# PC / x86
 pytorch=1.13.1
 libtorch=1.13.1
 cudnn=8
 onnxruntime=1.18.0
 tensorrt=8.4
 cuda=11
+
+# Jetson Orin NX
+Pytorch = 2.5.0
+CUDA = 12.6
+cuDNN = 9.3
+TensorRT = 10.3
+Python = 3.10.12
 ```
 
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
@@ -35,8 +43,8 @@ VisualFusion LibTorch is a high-performance computer vision system for **EO-IR (
 ## 🏗️ Project Structure
 
 ```
-VisualFusion_libtorch/
-├── IR_Convert_v21_libtorch/    # LibTorch C++ implementation (Main)
+VisualFusion/
+├── IR_Convert_v21_libtorch/    # LibTorch C++ implementation for PC (x86)
 │   ├── main.cpp                 # Main processing pipeline
 │   ├── config/                  # Configuration files
 │   │   └── config.json          # Runtime configuration
@@ -55,15 +63,23 @@ VisualFusion_libtorch/
 │   ├── build/                   # Build artifacts
 │   └── gcc.sh                   # Build script
 │
+├── IR_Convert_v21_libtorch_nx/ # LibTorch C++ implementation for Jetson Orin NX (ARM64)
+│   ├── main.cpp                 # Main processing pipeline for NX
+│   └── ...                      # (Structure similar to x86 version)
+│
 ├── Onnx/                        # ONNX Runtime implementation
 │   ├── main.cpp                 # ONNX Runtime pipeline
 │   ├── lib_image_fusion/        # Core libraries (similar structure)
 │   └── model/                   # ONNX models
 │
-├── tensorRT/                    # TensorRT implementation
+├── tensorRT/                    # TensorRT implementation for PC (x86)
 │   ├── main.cpp                 # TensorRT pipeline
 │   ├── lib_image_fusion/        # Core libraries
 │   └── model/                   # TensorRT engines
+│
+├── tensorRT_nx/                 # TensorRT implementation for Jetson Orin NX (ARM64)
+│   ├── main.cpp                 # TensorRT pipeline for NX
+│   └── ...                      # (Structure similar to x86 version)
 │
 └── convert_to_libtorch/         # Model conversion utilities
     ├── export_to_jit_fp16.py    # PyTorch → LibTorch FP16
@@ -86,11 +102,17 @@ VisualFusion_libtorch/
 
 ## 📋 Requirements
 
-### System Dependencies
+### System Dependencies (PC / x86)
 - **OS**: Ubuntu 20.04+ (tested on Ubuntu 20.04.6 LTS)
-- **CPU**: Multi-core processor
+- **CPU**: Multi-core processor (x86 architecture)
 - **Memory**: 4GB RAM minimum, 8GB+ recommended
-- **GPU**: NVIDIA GPU with CUDA 11.x support (optional, for GPU acceleration)
+- **GPU**: NVIDIA GPU with CUDA 11.x support
+
+### System Dependencies (Jetson Orin NX)
+- **OS**: NVIDIA JetPack
+- **CPU**: ARM64 architecture
+- **Memory**: 8GB+ shared memory
+- **GPU**: Jetson Orin NX integrated GPU
 
 ### Software Dependencies
 
@@ -99,17 +121,24 @@ VisualFusion_libtorch/
 - **CMake**: 3.18+
 - **OpenCV**: 4.5+
 
-#### Python Environment
+#### Python & Libraries (PC / x86)
 - **Python**: 3.8+
 - **PyTorch**: 1.13.1
 - **ONNX**: 1.14+
 - **onnxruntime**: 1.18.0
 - **numpy**, **opencv-python**
 
-#### GPU Libraries (Optional)
+#### GPU Libraries (PC / x86)
 - **CUDA**: 11.x
 - **cuDNN**: 8.x
 - **TensorRT**: 8.4.x (for TensorRT backend)
+
+#### Environment (Jetson Orin NX)
+- **Python**: 3.10.12
+- **PyTorch**: 2.5.0
+- **CUDA**: 12.6
+- **cuDNN**: 9.3
+- **TensorRT**: 10.3
 
 ## 🛠️ Installation
 
@@ -297,8 +326,7 @@ All runtime parameters are configured via `config/config.json`:
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
-    "fusion_threshold_equalization_zero": 64,
-    "fusion_interpolation": "cubic"
+    "fusion_threshold_equalization_zero": 64
 }
 ```
 
@@ -307,7 +335,6 @@ All runtime parameters are configured via `config/config.json`:
 | `fusion_shadow` | Enable shadow enhancement |
 | `fusion_edge_border` | Edge detection border width |
 | `fusion_threshold_*` | Histogram equalization thresholds |
-| `fusion_interpolation` | Interpolation method: `"linear"` or `"cubic"` |
 
 ### Homography & Alignment
 
