@@ -161,7 +161,7 @@ pip install onnx onnxruntime-gpu==1.18.0 opencv-python numpy
 
 ```bash
 cd IR_Convert_v21_libtorch
-bash gcc.sh
+bash gcc.sh && ./build/out
 ```
 
 The build script will:
@@ -173,14 +173,14 @@ The build script will:
 
 ```bash
 cd Onnx
-bash gcc.sh
+bash gcc.sh && ./build/out
 ```
 
 ### 5. Build TensorRT Version (Optional)
 
 ```bash
 cd tensorRT
-bash gcc.sh
+bash gcc.sh && ./build/out
 ```
 
 **Note**: TensorRT version requires TensorRT 8.4.x libraries installed and in `LD_LIBRARY_PATH`.
