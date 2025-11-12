@@ -18,6 +18,8 @@ namespace core
     void stop();
     void show();
 
+    // void align(cv::Mat &eo, cv::Mat &ir, std::vector<cv::Point2i> &eo_pts, std::vector<cv::Point2i> &ir_pts, cv::Mat &H);
+
   private:
     std::string name;
 
@@ -27,6 +29,6 @@ namespace core
     std::chrono::time_point<std::chrono::system_clock> start_time;
   };
 
-} 
+} /* namespace core */
 
-#endif 
+#endif /* INCLUDE_CORE_IMAGE_ALIGN_H_ */

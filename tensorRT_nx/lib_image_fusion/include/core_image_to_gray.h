@@ -1,4 +1,12 @@
-
+/*
+ * core_image_to_gray.h
+ *
+ *  Created on: Feb 22, 2024
+ *      Author: HongKai
+ * 
+ * Modified on: Mar 17, 2024
+ *      Author: HongKai
+ */
 
 #ifndef INCLUDE_CORE_IMAGE_TO_GRAY_H_
 #define INCLUDE_CORE_IMAGE_TO_GRAY_H_
@@ -27,6 +35,6 @@ class ImageToGray{
     Param param_;
   };
 
-} 
+} /* namespace core */
 
-#endif 
+#endif /* INCLUDE_CORE_IMAGE_RESIZER_H_ */

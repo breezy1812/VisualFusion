@@ -1,4 +1,21 @@
-
+/*
+ * core_image_perspective.h
+ *
+ *  Created on: Feb 29, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Mar 03, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Mar 17, 2024
+ *      Author: HongKai
+ *
+ *  Modified on: May 14, 2024
+ *      Author: HongKai
+ *
+ *  Modified on: May 23, 2024
+ *      Author: HongKai
+ */
 
 #ifndef INCLUDE_CORE_IMAGE_PERSPECTIVE_H_
 #define INCLUDE_CORE_IMAGE_PERSPECTIVE_H_
@@ -34,7 +51,7 @@ namespace core
         accuracy = acc;
         distance = dis;
         return *this;
-      }
+      } // NOLINT
     };
 
     static ptr create_instance(Param param)
@@ -45,12 +62,15 @@ namespace core
     ImagePerspective(Param param);
 
     cv::Mat wrap(cv::Mat &in, int width, int height);
+    // cv::Mat wrap(cv::Mat &in, cv::Mat &H, int width, int height);
 
     bool find_perspective_matrix(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst);
     bool find_perspective_matrix_msac(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst);
 
+    // count the number of points that satisfy the perspective transformation
     int count_allow(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst, cv::Mat &H);
 
+    // calculate the MSE score of the perspective transformation
     float calculate_mse(std::vector<cv::Point2i> &src, std::vector<cv::Point2i> &dst, cv::Mat &H);
 
     cv::Mat get_perspective_matrix()
@@ -62,6 +82,6 @@ namespace core
     Param param_;
   };
 
-} 
+} /* namespace core */
 
-#endif 
+#endif /* INCLUDE_CORE_IMAGE_PERSPECTIVE_H_ */

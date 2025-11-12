@@ -1,4 +1,21 @@
-
+/*
+ * core_image_resizer.h
+ *
+ *  Created on: Feb 15, 2024
+ *      Author: arthurho
+ * 
+ * Modified on: Feb 22, 2024
+ *      Author: HongKai
+ * 
+ * Modified on: Mar 12, 2024
+ *      Author: HongKai
+ * 
+ * Modified on: Mar 17, 2024
+ *      Author: HongKai
+ * 
+ * Modified on: Jul 19, 2024
+ *      Author: HongKai
+ */
 
 #ifndef INCLUDE_CORE_IMAGE_RESIZER_H_
 #define INCLUDE_CORE_IMAGE_RESIZER_H_
@@ -7,6 +24,7 @@
 #include <opencv2/opencv.hpp>
 
 namespace core {
+  
 class ImageResizer {
 public:
   using ptr = std::shared_ptr<ImageResizer>;
@@ -68,10 +86,11 @@ public:
   int get_eo_clip_y() { return param_.eo_rect.y; }
   int get_ir_clip_x() { return param_.ir_rect.x; }
   int get_ir_clip_y() { return param_.ir_rect.y; }
+  
 private:
   Param param_;
 };
 
-} 
+} /* namespace core */
 
-#endif 
+#endif /* INCLUDE_CORE_IMAGE_RESIZER_H_ */

@@ -1,4 +1,24 @@
-
+/*
+ * core_image_resizer.cpp
+ *
+ *  Created on: Feb 15, 2024
+ *      Author: arthurho
+ *
+ * Modified on: Feb 22, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Feb 29, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Mar 12, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Mar 17, 2024
+ *      Author: HongKai
+ *
+ * Modified on: Jul 19, 2024
+ *      Author: HongKai
+ */
 
 #include <core_image_resizer.h>
 
@@ -24,4 +44,4 @@ namespace core
   {
     return in(param_.ir_rect);
   }
-} 
+} /* namespace core */

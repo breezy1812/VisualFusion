@@ -25,4 +25,4 @@ namespace core
     std::cout << "\t   FPS: " << count / total_time << std::endl;
     std::cout << "\t Count: " << count << std::endl;
   }
-} 
+} /* namespace core */

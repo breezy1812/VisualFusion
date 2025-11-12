@@ -1,4 +1,3 @@
-
 #include <core_image_fusion.h>
 
 namespace core
@@ -104,48 +103,45 @@ namespace core
 
     edges.convertTo(out, CV_8U, 255.0);
     return out;
+  }
+
+  cv::Mat ImageFusion::fusion(cv::Mat &eo, cv::Mat &ir)
+  {
+
+    cv::Mat boder, shadow;
     cv::Mat out;
 
-    cv::Mat eo_dilated;
     if (param_.edge_border > 1)
-    {
-
-      cv::dilate(eo, eo_dilated, param_.bdStruct);
-    }
+      cv::dilate(eo, boder, param_.bdStruct);
     else
-    {
-      eo_dilated = eo.clone();
-    }
-
-    cv::Mat ir_3ch, eo_3ch;
-    if (ir.channels() == 1)
-      cv::cvtColor(ir, ir_3ch, cv::COLOR_GRAY2BGR);
-    else
-      ir_3ch = ir.clone();
-    if (eo_dilated.channels() == 1)
-    {
-
-      cv::cvtColor(eo_dilated, eo_3ch, cv::COLOR_GRAY2BGR);
-    }
-    else
-    {
-      eo_3ch = eo_dilated.clone();
-    }
+      boder = eo;
 
     if (param_.do_shadow)
     {
-      cv::Mat shadow;
-      cv::dilate(eo, shadow, param_.sdStruct);
+      cv::dilate(boder, shadow, param_.sdStruct);
       cv::cvtColor(shadow, shadow, cv::COLOR_GRAY2BGR);
-      cv::subtract(ir_3ch, shadow, ir_3ch);
     }
+
+    cv::Mat eo_3ch, ir_3ch;
+    cv::cvtColor(boder, eo_3ch, cv::COLOR_GRAY2BGR);
+    if (ir.channels() == 1) {
+      cv::cvtColor(ir, ir_3ch, cv::COLOR_GRAY2BGR);
+    } else {
+      ir_3ch = ir.clone();
+    }
+
     cv::Mat eo_enhanced;
     eo_3ch.convertTo(eo_enhanced, -1, 1.8, 0);
+
     cv::addWeighted(ir_3ch, 0.6, eo_enhanced, 1.0, 0, out);
 
-    cv::Mat clipped;
-    cv::threshold(out, clipped, 255, 255, cv::THRESH_TRUNC);
-    cv::threshold(clipped, out, 0, 0, cv::THRESH_TOZERO);
+    if (param_.do_shadow)
+    {
+      cv::Mat shadow_effect;
+      shadow.convertTo(shadow_effect, -1, 0.1, 0);
+      cv::subtract(out, shadow_effect, out);
+    }
+
     return out;
   }
-} 
+}
