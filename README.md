@@ -88,6 +88,7 @@ VisualFusion/
     ├── export_to_onnx_fp32.py   # PyTorch → ONNX FP32
     ├── export_to_tensorrt_fp16.py  # PyTorch → TensorRT FP16
     ├── export_to_tensorrt_fp32.py  # PyTorch → TensorRT FP32
+    ├── pytorch2trt_fusion_v2.py    # Image Fusion Model → TensorRT
     ├── model_jit/               # SemLA model implementation
     └── reg.ckpt                 # Pretrained weights
 ```
@@ -250,6 +251,51 @@ python export_to_tensorrt_fp16.py
 
 **Note**: TensorRT engines are GPU-specific and should be rebuilt when moving to different hardware.
 
+### Fusion Model (TensorRT)
+
+The image fusion algorithm is also exported as a TensorRT model for GPU acceleration. This replaces the CPU-based `core_image_fusion.cpp`.
+
+#### Export Fusion Model
+
+```bash
+cd convert_to_libtorch
+python pytorch2trt_fusion_v2.py export <edge_border> <height> <width>
+```
+
+**Parameters**:
+- `edge_border`: Edge thickness (default: 4). **This value is fixed at export time and cannot be changed at runtime.**
+- `height`: Image height (default: 240)
+- `width`: Image width (default: 320)
+
+**Examples**:
+```bash
+# Export with edge_border=4 (default, thicker edges)
+python pytorch2trt_fusion_v2.py export 4
+
+# Export with edge_border=1 (thinner edges)
+python pytorch2trt_fusion_v2.py export 1
+
+# Export with custom size
+python pytorch2trt_fusion_v2.py export 4 240 320
+```
+
+**Output files** (in `../tensorRT_nx/model/NX/`):
+- `border_<edge_border>_fusion.onnx` - ONNX intermediate file
+- `border_<edge_border>_fusion.trt` - TensorRT engine (FP32)
+
+**Configuration**: After exporting, update `config.json`:
+```json
+{
+    "use_trt_fusion": true,
+    "fusion_trt_engine": "./model/NX/border_4_fusion.trt"
+}
+```
+
+**Note**: 
+- The fusion model uses **fixed arithmetic operations** (Sobel convolution, shift, etc.), not learned weights
+- FP32 precision is used (FP16 is unnecessary for fixed operations)
+- To change edge thickness, re-export with a different `edge_border` value
+
 ## ⚙️ Configuration
 
 All runtime parameters are configured via `config/config.json`:
@@ -322,19 +368,27 @@ All runtime parameters are configured via `config/config.json`:
 ```json
 {
     "fusion_shadow": true,
-    "fusion_edge_border": 2,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
-    "fusion_threshold_equalization_zero": 64
+    "fusion_threshold_equalization_zero": 64,
+    "use_trt_fusion": true,
+    "fusion_trt_engine": "./model/NX/border_4_fusion.trt"
 }
 ```
 
 | Parameter | Description |
 |-----------|-------------|
-| `fusion_shadow` | Enable shadow enhancement |
-| `fusion_edge_border` | Edge detection border width |
-| `fusion_threshold_*` | Histogram equalization thresholds |
+| `fusion_shadow` | Enable shadow enhancement (CPU fusion only) |
+| `fusion_threshold_*` | Histogram equalization thresholds (CPU fusion only) |
+| `use_trt_fusion` | Enable TensorRT GPU fusion model |
+| `fusion_trt_engine` | Path to TensorRT fusion engine (`.trt`) |
+
+**Important - Edge Border Configuration**:
+- The `edge_border` parameter (edge thickness) is **fixed at model export time**
+- It **cannot** be changed dynamically at runtime via config.json
+- To change edge thickness, you must **re-export** the fusion model with a different `edge_border` value
+- See [Fusion Model Conversion](#fusion-model-tensorrt) section for export instructions
 
 ### Homography & Alignment
 
@@ -465,22 +519,14 @@ The system follows this processing flow:
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
-│ 7. Edge Detection                                           │
-│    - Canny edge detection on both images                    │
-│    - Adaptive thresholding                                  │
-│    - Multi-scale edge extraction                            │
+│ 7. Image Fusion (TensorRT GPU or CPU)                       │
+│    - TRT Mode: Load fusion TRT engine, GPU processing       │
+│    - CPU Mode: Sobel edge detection + blending              │
+│    - Edge thickness fixed at model export (TRT)             │
 └─────────────────────────────┬───────────────────────────────┘
                               │
 ┌─────────────────────────────▼───────────────────────────────┐
-│ 8. Image Fusion                                             │
-│    - Warp IR image using homography                         │
-│    - Shadow-enhanced blending                               │
-│    - Edge-aware composition                                 │
-│    - Interpolation: Linear or Cubic                         │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-┌─────────────────────────────▼───────────────────────────────┐
-│ 9. Output Generation                                        │
+│ 8. Output Generation                                        │
 │    - Fused image                                            │
 │    - Visualization with keypoints and matches               │
 │    - Save to output directory                               │
@@ -547,16 +593,47 @@ if (|current_tx - prev_tx| > max_translation_diff ||
 
 ### 4. Image Fusion
 
+The image fusion can be performed using either **CPU** or **TensorRT GPU** backend.
+
+#### TensorRT GPU Fusion (Recommended)
+
+When `use_trt_fusion: true` in config.json:
+
+**Pipeline**:
+1. **Load TensorRT Engine**: Pre-exported fusion model (`border_X_fusion.trt`)
+2. **Input**: 
+   - EO grayscale image [1, 1, H, W]
+   - IR color image [1, 3, H, W]
+3. **GPU Processing**:
+   - Sobel edge detection with Gaussian blur
+   - Shadow effect using shift operations (fixed `edge_border` from export)
+   - Edge overlay on IR image
+4. **Output**: Fused RGB image [1, 3, H, W]
+
+**Advantages**:
+- GPU-accelerated processing
+- Consistent results across platforms
+- No CPU-GPU data transfer overhead during fusion
+
+**Limitations**:
+- `edge_border` (edge thickness) is fixed at model export time
+- Must re-export model to change edge thickness
+
+#### CPU Fusion (Legacy)
+
+When `use_trt_fusion: false` in config.json:
+
 **Steps**:
 1. **Warp IR image** using computed homography
-2. **Edge detection** on both EO and IR images
-3. **Shadow enhancement** (if enabled):
-   - Histogram equalization with multiple thresholds
+2. **Edge detection** on EO image (Sobel-based)
+3. **Shadow enhancement** (if `fusion_shadow: true`):
+   - Histogram equalization with configurable thresholds
    - Adaptive contrast adjustment
 4. **Blending**:
    - Edge-aware alpha composition
-   - Interpolation: Linear or Cubic
 5. **Output**: Fused RGB image
+
+**Note**: CPU fusion uses `core_image_fusion.cpp` and supports runtime `fusion_edge_border` configuration.
 
 
 ### Poor Alignment Quality
