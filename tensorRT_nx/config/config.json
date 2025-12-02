@@ -1,7 +1,7 @@
 {
     "input_dir": "/circ330/videodata/debug",
     "output_dir": "/circ330/forgithub/VisualFusion_libtorch/tensorRT_nx/output",
-    "output": false,
+    "output": true,
 
     "device": "cuda",
     "pred_mode": "fp16",
@@ -13,7 +13,7 @@
     "Vcut_w": 2020,
     "Vcut_h": 1680,
     
-    "compute_per_frame": 0,
+    "compute_per_frame": 15,
     
     "PictureCut":true,
     "Pcut_x":220,
@@ -30,11 +30,12 @@
     "pred_height": 240,
 
     "fusion_shadow": true,
-    "fusion_edge_border":1.5,
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
+    "use_trt_fusion": true,
+    "fusion_trt_engine": "./model/NX/border_1_fusion.trt",
 
     "perspective_check": true,
     "perspective_distance": 10,
