@@ -30,12 +30,12 @@
     "pred_height": 240,
 
     "fusion_shadow": true,
+    "use_trt_fusion": true,
+    "fusion_trt_engine": "./model/NX/border_1_fusion.trt",
     "fusion_threshold_equalization": 128,
     "fusion_threshold_equalization_low": 72,
     "fusion_threshold_equalization_high": 192,
     "fusion_threshold_equalization_zero": 64,
-    "use_trt_fusion": true,
-    "fusion_trt_engine": "./model/NX/border_1_fusion.trt",
 
     "perspective_check": true,
     "perspective_distance": 10,
