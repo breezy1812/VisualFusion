@@ -14,25 +14,9 @@ import torch.nn.functional as F
 
 
 class ImageFusionV2:
-    """
-    改進版圖像融合類
-    - 使用標準 Sobel 邊緣檢測
-    - 使用 reflect padding 避免邊界問題
-    - 不使用 roll 操作，避免邊緣偏移
-    """
-
     def __init__(self, edge_strength: float = 1.0, blur_kernel_size: int = 3, 
                  image_width: int = 320, image_height: int = 240, device: str = "cuda"):
-        """
-        初始化融合器
-        
-        Args:
-            edge_strength: 邊緣強度係數 (越大邊緣越明顯)
-            blur_kernel_size: 高斯模糊核大小
-            image_width: 圖像寬度
-            image_height: 圖像高度
-            device: 運算設備
-        """
+
         if device == "cuda" and torch.cuda.is_available():
             self.device = torch.device("cuda")
         else:
@@ -604,13 +588,6 @@ def export_to_onnx(model: ImageFusionModule, onnx_path: str,
                    height: int = 240, width: int = 320, opset_version: int = 17):
     """
     導出模型為 ONNX 格式
-    
-    Args:
-        model: ImageFusionModule 實例
-        onnx_path: 輸出的 ONNX 文件路徑
-        height: 圖像高度
-        width: 圖像寬度
-        opset_version: ONNX opset 版本
     """
     model.eval()
     # 獲取設備 (從 buffer 獲取)
@@ -655,16 +632,7 @@ def export_to_onnx(model: ImageFusionModule, onnx_path: str,
 def convert_onnx_to_tensorrt(onnx_path: str, trt_path: str, 
                               height: int = 240, width: int = 320,
                               workspace_mb: int = 256):
-    """
-    將 ONNX 模型轉換為 TensorRT 引擎 (固定使用 FP32)
-    
-    Args:
-        onnx_path: ONNX 模型路徑
-        trt_path: 輸出的 TensorRT 引擎路徑
-        height: 圖像高度
-        width: 圖像寬度
-        workspace_mb: 工作空間大小 (MB)，預設 256MB 適合 Jetson
-    """
+
     try:
         import tensorrt as trt
     except ImportError:
